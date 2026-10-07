@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Login App</string>
+    <string name="login">Login</string>
+    <string name="register">Naya account banayein</string>
+    <string name="create_account">Account banayein</string>
+    <string name="back_to_login">Login par wapas jayein</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Password dobara likhein</string>
+    <string name="forgot_password">Password bhool gaye?</string>
+    <string name="logout">Logout</string>
+    <string name="login_subtitle">Login karke andar jaiye</string>
+    <string name="register_subtitle">Naya account banayein, 10 second me</string>
+</resources>
