@@ -1,6 +1,6 @@
 # Ram Darbar Tracker — Truck Transport Management
 
-> **Live demo:** https://pittsburgh-findings-molecules-inquire.trycloudflare.com
+> **Live demo:** https://clips-tale-eleven-allowance.trycloudflare.com
 > (temporary Cloudflare quick tunnel — data resets when server restarts.
 > Login screen se "Create a new account" karke apna account banao.)
 
