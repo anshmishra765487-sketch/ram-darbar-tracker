@@ -189,7 +189,7 @@ async def request_otp(payload: OtpRequest):
         otp_service.clear(otp_key)
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"SMS could not be sent: {error}")
 
-    return {
+    response = {
         "sent": True,
         "via": "sms",
         "channel": channel,
@@ -198,6 +198,10 @@ async def request_otp(payload: OtpRequest):
         "resend_after": otp_service.OTP_RESEND_SECONDS,
         "length": otp_service.OTP_LENGTH,
     }
+    if channel == "demo":
+        response["demo"] = True
+        response["dev_code"] = code
+    return response
 
 
 @router.post("/otp/verify", response_model=LoginResponse)

@@ -130,14 +130,31 @@ with client:
         client.put("/api/auth/phone", headers=headers, json={"phone": "123"}).status_code == 400,
     )
 
-    # No gateway configured -> must fail loudly, never return the code.
+    # No gateway configured -> demo mode returns the code on screen (OTP_DEMO=1 default).
     otp_service.clear()
     no_gw = client.post("/api/auth/otp/request", json={"identifier": "9876543210"})
     check(
-        "otp without gateway -> 502 (no dev code)",
-        no_gw.status_code == 502 and "dev_code" not in no_gw.text,
+        "otp no gateway -> demo dev_code",
+        no_gw.status_code == 200 and no_gw.json().get("channel") == "demo" and bool(no_gw.json().get("dev_code")),
         f"{no_gw.status_code} {no_gw.text[:80]}",
     )
+    demo_code = no_gw.json().get("dev_code")
+
+    # Demo OTP verifies without any SMS gateway.
+    demo_ok = client.post("/api/auth/otp/verify", json={"identifier": "9876543210", "code": demo_code})
+    check("otp demo verify -> token", demo_ok.status_code == 200, str(demo_ok.status_code))
+
+    # OTP_DEMO=0 -> fails loudly, never returns the code.
+    sms_service.OTP_DEMO = False
+    otp_service.clear()
+    off = client.post("/api/auth/otp/request", json={"identifier": "9876543210"})
+    check(
+        "otp demo off -> 502 (no dev code)",
+        off.status_code == 502 and "dev_code" not in off.text,
+        f"{off.status_code} {off.text[:80]}",
+    )
+    sms_service.OTP_DEMO = True
+    otp_service.clear()
 
     # Real gateway path: stub the provider call and capture the code.
     sent: dict[str, str] = {}

@@ -3,8 +3,9 @@
 Works without any SMS library (urllib + plain HTTP). Providers:
 fast2sms | msg91 | twilio.
 
-If no provider is configured or the provider call fails, SmsError is raised -
-the code is never printed or returned to the client.
+If no provider is configured, the OTP falls back to demo mode (when OTP_DEMO
+is enabled): the code is returned to the client so it can be shown on screen.
+When a real provider is configured, the code is never returned to the client.
 """
 
 from __future__ import annotations
@@ -21,6 +22,8 @@ load_dotenv()
 
 SMS_PROVIDER = os.getenv("SMS_PROVIDER", "").strip().lower()
 SMS_ENABLED = SMS_PROVIDER in ("fast2sms", "msg91", "twilio")
+# Demo mode: no gateway configured -> return the OTP to the client for on-screen display.
+OTP_DEMO = os.getenv("OTP_DEMO", "1").strip().lower() not in ("0", "false", "no")
 
 FAST2SMS_KEY = os.getenv("FAST2SMS_KEY", "").strip()
 FAST2SMS_SENDER = os.getenv("FAST2SMS_SENDER", "TXTLNS").strip()
@@ -107,11 +110,13 @@ def _twilio(phone: str, code: str, minutes: int) -> None:
 
 
 def send(phone: str, code: str, minutes: int) -> str:
-    """Send the OTP SMS. Raises SmsError when it cannot be delivered."""
+    """Send the OTP SMS. Returns the channel: 'sms' or 'demo'."""
     if not phone:
         raise SmsError("Phone number missing")
 
     if not SMS_ENABLED:
+        if OTP_DEMO:
+            return "demo"
         raise SmsError(
             "SMS gateway not configured. Set SMS_PROVIDER to fast2sms, msg91 or twilio "
             "with the matching API keys."

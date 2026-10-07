@@ -49,6 +49,7 @@ export default function Login() {
   const [cooldown, setCooldown] = useState(0);
   const [otpSent, setOtpSent] = useState(false);
   const [sentTo, setSentTo] = useState("");
+  const [demoCode, setDemoCode] = useState("");
   const [resetMode, setResetMode] = useState(false);
   const [error, setError] = useState("");
   const [isSignup, setIsSignup] = useState(false);
@@ -87,6 +88,7 @@ export default function Login() {
     setOtpSent(false);
     setSentTo("");
     setCode("");
+    setDemoCode("");
     setCooldown(0);
   };
 
@@ -123,6 +125,9 @@ export default function Login() {
       setCode("");
       setSentTo(res.data?.sent_to || "");
       setCooldown(res.data?.resend_after || 45);
+      const dev = res.data?.dev_code || "";
+      setDemoCode(dev);
+      if (dev) setCode(dev);
       toast.success(t("login_otp_sent"));
       setTimeout(() => codeRef.current?.focus(), 60);
     } catch (err) {
@@ -540,6 +545,14 @@ export default function Login() {
                 {sentTo ? (
                   <p className="text-[11px] font-semibold text-emerald-700">
                     {t("login_otp_sent_to")} {sentTo}
+                  </p>
+                ) : null}
+
+                {demoCode ? (
+                  <p className="flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-700">
+                    <DeviceMobile size={15} weight="duotone" className="shrink-0" />
+                    Demo mode — OTP: <span className="font-mono tracking-widest">{demoCode}</span>
+                    (auto-filled, abhi Verify dabao)
                   </p>
                 ) : null}
 
