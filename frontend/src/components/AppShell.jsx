@@ -12,6 +12,7 @@ import {
   TruckIcon,
   SignOut,
   Key,
+  GithubLogo,
 } from "@phosphor-icons/react";
 import { Toaster, toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -104,6 +105,16 @@ export default function AppShell({ children }) {
           </div>
 
           <p className="text-[11px] text-ink-500">{t("clear_data_hint")}</p>
+
+          <a
+            href="https://github.com/anshmishra765487-sketch"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-500 transition-colors hover:text-brand-400"
+          >
+            <GithubLogo size={14} weight="bold" />
+            @anshmishra765487-sketch
+          </a>
         </div>
       </aside>
 
@@ -131,6 +142,18 @@ export default function AppShell({ children }) {
         </header>
 
         <main className="mx-auto max-w-7xl px-4 pb-28 pt-5 lg:px-8 lg:pb-10">{children}</main>
+
+        <footer className="border-t border-ink-200 px-4 py-3 text-center text-[11px] text-ink-400 lg:pb-4">
+          <a
+            href="https://github.com/anshmishra765487-sketch"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 font-semibold text-ink-500 transition-colors hover:text-brand-600"
+          >
+            <GithubLogo size={14} weight="bold" />
+            Built by @anshmishra765487-sketch
+          </a>
+        </footer>
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-200 bg-white/95 backdrop-blur lg:hidden">

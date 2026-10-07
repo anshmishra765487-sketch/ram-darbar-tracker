@@ -639,6 +639,17 @@ export default function Login() {
           <p className="mt-4 text-center text-[11px] text-ink-400">
             {t("tagline")} · <span className="font-semibold">{t("app_version")}</span>
           </p>
+          <p className="mt-2 text-center text-[11px] text-ink-400">
+            Built by{" "}
+            <a
+              href="https://github.com/anshmishra765487-sketch"
+              target="_blank"
+              rel="noreferrer"
+              className="font-bold text-brand-600 underline hover:text-brand-700"
+            >
+              @anshmishra765487-sketch
+            </a>
+          </p>
         </div>
       </div>
     </div>
