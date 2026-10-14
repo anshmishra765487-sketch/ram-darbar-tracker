@@ -1,8 +1,14 @@
 # Ram Darbar Tracker — Truck Transport Management
 
-> **Live demo:** https://properties-jam-received-recipients.trycloudflare.com
-> (temporary Cloudflare quick tunnel — data resets when server restarts.
-> Login screen se "Create a new account" karke apna account banao.)
+> **Live app (GitHub Pages):** https://anshmishra765487-sketch.github.io/ram-darbar-tracker/
+> The frontend is hosted permanently on GitHub Pages. It talks to the backend API at the
+> URL baked in at build time (repo variable `VITE_API_URL`, see Deployment below).
+> Login screen se "Create a new account" karke apna account banao.
+
+> **Temporary demo backend (cloudflared tunnel):**
+> https://properties-jam-received-recipients.trycloudflare.com
+> (data resets when the server restarts. Ye sirf tab tak chalta hai jab tak
+> local backend + tunnel chal rahe hain.)
 
 Complete transport business accounting in one place: trips (consignment), trucks, drivers,
 expenses, party payments, accounting reports and printable **bilty PDF**.
@@ -153,6 +159,28 @@ POST   /api/auth/signup             POST /api/auth/change-password    PUT  /api/
 POST   /api/auth/otp/request        POST /api/auth/otp/verify
 POST   /api/auth/password-reset
 ```
+
+---
+
+## Deployment
+
+Frontend GitHub Pages par host hota hai, backend alag. Do options:
+
+### Frontend — GitHub Pages (permanent)
+`.github/workflows/deploy-pages.yml` har push par frontend build karke Pages par deploy karta hai.
+Live URL: **https://anshmishra765487-sketch.github.io/ram-darbar-tracker/**
+
+Backend API URL build ke waqt `VITE_API_URL` se aata hai. Isse badalne ke liye:
+GitHub repo → **Settings → Secrets and variables → Actions → Variables → New repository variable**
+`VITE_API_URL` = `https://your-backend-url/api` (set na ho to demo tunnel use hota hai).
+
+Ek baar Pages enable karna zaroori hai: **Settings → Pages → Source: GitHub Actions**.
+
+### Backend — Render (permanent, free)
+Repo me `render.yaml` blueprint hai. Render Dashboard → **New → Blueprint** → apna repo select karo.
+Ye `https://ram-darbar-tracker-api.onrender.com` jaisa stable URL deta hai. Us URL ke aage `/api`
+`VITE_API_URL` variable me daalo aur workflow dobara chalao. Free plan par data memory me rehta hai
+(redeploy/restart par reset), MongoDB `MONGO_URI` set karke persist kar sakte ho.
 
 ---
 
