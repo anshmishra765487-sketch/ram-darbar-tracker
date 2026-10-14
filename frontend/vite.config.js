@@ -9,7 +9,12 @@ const proxy = {
   },
 };
 
+// GitHub Pages ke liye base path (e.g. /ram-darbar-tracker/).
+// Local dev me "/" hi rehta hai (VITE_BASE set nahi hota).
+const base = process.env.VITE_BASE || "/";
+
 export default defineConfig({
+  base,
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,

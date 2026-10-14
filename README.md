@@ -1,6 +1,6 @@
 # Ram Darbar Tracker — Truck Transport Management
 
-> **Live demo:** https://clips-tale-eleven-allowance.trycloudflare.com
+> **Live demo:** https://properties-jam-received-recipients.trycloudflare.com
 > (temporary Cloudflare quick tunnel — data resets when server restarts.
 > Login screen se "Create a new account" karke apna account banao.)
 
@@ -43,7 +43,7 @@ Browser me kholein: **http://localhost:5173**
 aur password (min 6 characters). Account banate hi app open ho jata hai.
 
 Apna number Account page se save kar sakte hain, ya `.env` me `ADMIN_PHONE`.
-**Real SMS ke liye SMS gateway zaroori hai** — koi demo/log mode nahi hai:
+**Real SMS ke liye SMS gateway zaroori hai**:
 
 ```bash
 ADMIN_PHONE=9876543210
@@ -51,8 +51,11 @@ SMS_PROVIDER=fast2sms      # ya msg91 / twilio
 FAST2SMS_KEY=xxxx
 ```
 
-Gateway set nahi hai to OTP request `502` fail hoti hai aur code kabhi screen ya terminal par
-dikhata nahi.
+Gateway set nahi hai to **demo mode** chalta hai (`OTP_DEMO=1` default): OTP request `200`
+return karti hai aur code response ke `dev_code` me aata hai, jise login screen par
+"Demo mode — OTP: XXXXXX" ke roop me dikhaya jata hai. Production me isse band karne ke liye
+`OTP_DEMO=0` set karein — phir gateway ke bina OTP request `502` fail hoti hai aur code
+kabhi return ya log nahi hota.
 
 Database app start par **khali** rehta hai — apna data khud add karein:
 Trucks → Drivers → Trips → Expenses/Payments. Koi demo data seed nahi hota.
@@ -162,8 +165,8 @@ python test_api.py
 
 Login + 90+ checks — 401 without token, wrong password, owner login, password hash
 survives `/auth/me`, change password, 5-attempt lockout, signup (create + duplicate block +
-new user login), poora SMS OTP flow (no-gateway 502 with no code leak, cooldown, wrong code,
-single use, token), phone save, OTP se password reset, duplicate truck block, trip ledger math,
+new user login), poora SMS OTP flow (demo mode dev_code, OTP_DEMO=0 par 502 with no code leak,
+cooldown, wrong code, single use, token), phone save, OTP se password reset, duplicate truck block, trip ledger math,
 over-payment block, dashboard 6 months, reports totals, bilty PDF, saare 6 accounting
 endpoints, cascade delete, reset.
 

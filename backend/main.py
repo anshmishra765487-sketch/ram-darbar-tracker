@@ -90,7 +90,12 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1|10\.0\.2\.2)(:\d+)?",
+    allow_origin_regex=(
+        r"http://(localhost|127\.0\.0\.1|10\.0\.2\.2)(:\d+)?"
+        r"|https://([a-z0-9-]+\.)*github\.io"
+        r"|https://([a-z0-9-]+\.)*trycloudflare\.com"
+        r"|https://([a-z0-9-]+\.)*onrender\.com"
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

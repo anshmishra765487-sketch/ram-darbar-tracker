@@ -2,7 +2,8 @@
 
 6-digit code with expiry, attempt limit and resend cooldown. Delivery goes
 through a real SMS gateway (see sms.py). If no gateway is configured the
-request fails loudly instead of silently logging the code.
+request falls back to demo mode (OTP_DEMO=1, default) which returns the code
+to the client for on-screen display; with OTP_DEMO=0 it fails loudly instead.
 """
 
 from __future__ import annotations

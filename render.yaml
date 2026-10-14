@@ -1,0 +1,24 @@
+# Render Blueprint - permanent backend for Ram Darbar Tracker.
+# Usage: Render Dashboard -> New -> Blueprint -> connect this repo.
+# Gives a stable URL like https://ram-darbar-tracker-api.onrender.com
+services:
+  - type: web
+    name: ram-darbar-tracker-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: AUTH_REQUIRED
+        value: "true"
+      # Demo OTP on screen until a real SMS gateway is configured.
+      - key: OTP_DEMO
+        value: "1"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://anshmishra765487-sketch.github.io

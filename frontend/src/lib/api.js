@@ -4,6 +4,9 @@ export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "/api",
 });
 
+// GitHub Pages jaisa sub-path deployment (e.g. /ram-darbar-tracker/) ke liye.
+const BASE = import.meta.env.BASE_URL || "/";
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("rdt_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -14,14 +17,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
-    const onLoginPage = window.location.pathname === "/login";
+    const onLoginPage = window.location.pathname === `${BASE}login`.replace("//", "/");
     const isLoginCall = error?.config?.url?.includes("/auth/login");
     if (status === 401 && !onLoginPage && !isLoginCall) {
       localStorage.removeItem("rdt_token");
       localStorage.removeItem("rdt_user");
       const from = window.location.pathname + window.location.search;
       sessionStorage.setItem("rdt_expired", "1");
-      window.location.assign(`/login${from && from !== "/" ? `?from=${encodeURIComponent(from)}` : ""}`);
+      const loginPath = `${BASE}login`.replace("//", "/");
+      window.location.assign(`${loginPath}${from && from !== "/" ? `?from=${encodeURIComponent(from)}` : ""}`);
     }
     return Promise.reject(error);
   },
