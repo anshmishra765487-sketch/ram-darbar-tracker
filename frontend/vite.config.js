@@ -18,6 +18,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
+    // LAN + tunnel se access ke liye saare interfaces par bind karo.
+    host: true,
     // Public tunnel (cloudflared) ke liye - host header allow karna zaroori hai.
     allowedHosts: true,
     proxy,
