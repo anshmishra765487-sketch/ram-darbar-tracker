@@ -35,10 +35,6 @@ jobs:
         env:
           # Project page sub-path, e.g. /ram-darbar-tracker/
           VITE_BASE: /${{ github.event.repository.name }}/
-          # Backend API base URL. Set a repo variable VITE_API_URL
-          # (Settings > Secrets and variables > Actions > Variables) to change it
-          # without editing this file. Falls back to the current demo tunnel.
-          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://properties-jam-received-recipients.trycloudflare.com/api' }}
         run: |
           npm run build
           cp dist/index.html dist/404.html
