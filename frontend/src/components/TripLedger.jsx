@@ -104,7 +104,8 @@ export default function TripLedger({ tripId, open, onClose }) {
                 value={rupees(expenseTotal - cashExpenses)}
                 tone="text-amber-700"
               />
-              <Total label={t("ledger_expenses")} value={rupees(expenseTotal)} tone="text-rose-700" />
+              <Line label="Driver payment" value={rupees(driverPay)} tone="text-amber-700" />
+              <Total label="Total kharcha" value={rupees(expenseTotal + driverPay)} tone="text-rose-700" />
               {expenses.length === 0 ? (
                 <p className="mt-2 text-[11px] text-ink-400">{t("ledger_no_expense")}</p>
               ) : (
@@ -153,10 +154,10 @@ export default function TripLedger({ tripId, open, onClose }) {
               <Line label="Maal kharida" value={rupees(purchase)} tone="text-rose-700" />
               <Line label="Maal becha" value={rupees(sale)} tone="text-emerald-700" />
               <Line label="Kharcha" value={rupees(expenseTotal)} tone="text-amber-700" />
+              <Line label="Driver payment" value={rupees(driverPay)} tone="text-amber-700" />
               <Line label="Extra kharcha" value={rupees(extra)} tone="text-amber-700" />
-              <Line label="Driver payment" value={rupees(driverPay)} tone="text-rose-700" />
               <Total
-                label="Net profit (Sale - Purchase - Kharcha - Driver)"
+                label="Net profit (Sale - Purchase - Kharcha)"
                 value={rupees(tradeProfit)}
                 tone={tradeProfit >= 0 ? "text-emerald-700" : "text-rose-700"}
               />

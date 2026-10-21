@@ -85,24 +85,25 @@ function biltyLines(trip) {
   row("Pending", money(trip.pending_amount));
   rule();
 
-  add("MAAL / TRADING", { bold: true, size: 12 });
-  row("Maal kharida", money(trip.purchase_total));
-  row("Maal becha", money(trip.sale_total));
-  row("Kharcha", money(trip.expense_total));
-  row("Extra kharcha", money(trip.extra_expense_total));
-  row("Driver payment", money(trip.driver_pay_total));
-  row("Net profit", money(trip.trade_profit));
-  rule();
-
-  if (trip.expenses && trip.expenses.length) {
-    add("EXPENSES", { bold: true, size: 12 });
-    for (const expense of trip.expenses) {
+  const driverPay = Number(trip.driver_pay_total || 0);
+  if ((trip.expenses && trip.expenses.length) || driverPay > 0) {
+    add("KHARCHA / EXPENSES", { bold: true, size: 12 });
+    for (const expense of trip.expenses || []) {
       add(`${expense.date || ""}  ${expense.category || "-"}  ${expense.note || ""}`.trim(), { size: 10 });
       add(`   Amount: ${money(expense.amount)}`, { size: 10 });
     }
-    row("Expense total", money(trip.expense_total));
+    row("Kharcha total", money(trip.expense_total));
+    if (driverPay > 0) row("Driver payment", money(driverPay));
+    row("Total kharcha", money(Number(trip.expense_total || 0) + driverPay));
     rule();
   }
+
+  add("MAAL / TRADING", { bold: true, size: 12 });
+  row("Maal kharida", money(trip.purchase_total));
+  row("Maal becha", money(trip.sale_total));
+  row("Extra kharcha", money(trip.extra_expense_total));
+  row("Net profit", money(trip.trade_profit));
+  rule();
 
   add("SUMMARY", { bold: true, size: 12 });
   row("Profit", money(trip.profit));
