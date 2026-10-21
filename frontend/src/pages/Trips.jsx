@@ -130,16 +130,28 @@ export default function Trips() {
     setExpenseRows([]);
     setEditing(trip._id);
     setOpen(true);
+    api
+      .get("/expenses")
+      .then((res) => {
+        const rows = (res.data || [])
+          .filter((expense) => expense.trip_id === trip._id && Number(expense.amount || 0) > 0)
+          .map((expense) => ({
+            category: expense.category,
+            amount: expense.amount,
+            note: expense.note || "",
+            _id: expense._id,
+          }));
+        setExpenseRows(rows);
+      })
+      .catch(() => {});
   };
 
-  const addExpenseRow = () =>
-    setExpenseRows((rows) => [...rows, { category: EXPENSE_CATEGORIES[0], amount: "", note: "" }]);
-
-  const updateExpenseRow = (index, patch) =>
-    setExpenseRows((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-
-  const removeExpenseRow = (index) =>
-    setExpenseRows((rows) => rows.filter((_, i) => i !== index));
+  const setExpenseAmount = (category, amount) =>
+    setExpenseRows((rows) => {
+      const rest = rows.filter((row) => row.category !== category);
+      if (!amount) return rest;
+      return [...rest, { category, amount, note: "" }];
+    });
 
   const save = async () => {
     if (!form.party_name.trim() || !form.from_location.trim() || !form.to_location.trim()) {
@@ -184,12 +196,18 @@ export default function Trips() {
 
   const saveExpenses = async (tripId) => {
     const rows = expenseRows.filter((row) => Number(row.amount) > 0);
+    const existing = await api.get("/expenses").catch(() => ({ data: [] }));
+    for (const expense of existing.data || []) {
+      if (expense.trip_id === tripId) {
+        await api.delete(`/expenses/${expense._id}`).catch(() => {});
+      }
+    }
     for (const row of rows) {
       await api.post("/expenses", {
         trip_id: tripId,
         category: row.category,
         amount: Number(row.amount),
-        note: row.note,
+        note: row.note || "",
         date: form.date,
       });
     }
@@ -474,55 +492,33 @@ export default function Trips() {
         </div>
 
         <div className="mt-4 rounded-xl border border-ink-200 p-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-bold text-ink-800">Trip Expenses</p>
-              <p className="text-xs text-ink-400">Is trip ke kharche (optional)</p>
-            </div>
-            <Button type="button" variant="outline" onClick={addExpenseRow}>
-              <Plus size={15} weight="bold" /> Add
-            </Button>
+          <div className="mb-3">
+            <p className="text-sm font-bold text-ink-800">Trip Expenses</p>
+            <p className="text-xs text-ink-400">
+              Is trip ke kharche category-wise (Fuel, Toll, Maintenance, Driver Advance...). Total maal beche (sale) se minus hoga.
+            </p>
           </div>
 
-          {expenseRows.length === 0 ? (
-            <p className="text-xs text-ink-400">Abhi koi expense nahi. "Add" dabao.</p>
-          ) : (
-            <div className="space-y-2">
-              {expenseRows.map((row, index) => (
-                <div key={index} className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[1fr_1fr_1.4fr_auto]">
-                  <Select
-                    value={row.category}
-                    onChange={(e) => updateExpenseRow(index, { category: e.target.value })}
-                  >
-                    {EXPENSE_CATEGORIES.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </Select>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {EXPENSE_CATEGORIES.map((category) => {
+              const row = expenseRows.find((r) => r.category === category);
+              return (
+                <Field key={category} label={category}>
                   <Input
                     type="number"
                     min="0"
-                    placeholder="Amount"
-                    value={row.amount}
-                    onChange={(e) => updateExpenseRow(index, { amount: e.target.value })}
+                    placeholder="0"
+                    value={row?.amount ?? ""}
+                    onChange={(e) => setExpenseAmount(category, e.target.value)}
                   />
-                  <Input
-                    placeholder="Note (optional)"
-                    value={row.note}
-                    onChange={(e) => updateExpenseRow(index, { note: e.target.value })}
-                    className="col-span-2 sm:col-span-1"
-                  />
-                  <IconButton type="button" label="Remove" onClick={() => removeExpenseRow(index)}>
-                    <Trash size={16} className="text-rose-600" />
-                  </IconButton>
-                </div>
-              ))}
-              <p className="text-right text-xs font-semibold text-ink-600">
-                Total: {rupees(expenseRows.reduce((sum, row) => sum + Number(row.amount || 0), 0))}
-              </p>
-            </div>
-          )}
+                </Field>
+              );
+            })}
+          </div>
+
+          <p className="mt-3 text-right text-sm font-bold text-ink-700">
+            Total kharcha: {rupees(expenseRows.reduce((sum, row) => sum + Number(row.amount || 0), 0))}
+          </p>
         </div>
       </Modal>
 

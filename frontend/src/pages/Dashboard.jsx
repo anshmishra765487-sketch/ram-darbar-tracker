@@ -20,7 +20,6 @@ import {
   HourglassMedium,
   FileText,
   PiggyBank,
-  Scales,
   Warning,
   ArrowRight,
 } from "@phosphor-icons/react";
@@ -88,18 +87,11 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
-          label="Total load (tons)"
-          value={`${Number(kpi.total_load_tons || 0).toFixed(2)} T`}
-          icon={Scales}
-          tone="slate"
-          hint="All active trips"
-        />
-        <StatCard
-          label="Avg rate / ton"
-          value={rupees(kpi.avg_rate_per_ton, true)}
+          label="Total sale"
+          value={rupees(kpi.total_revenue, true)}
           icon={CurrencyInr}
           tone="brand"
-          hint="Freight ÷ total tons"
+          hint="Maal becha total"
         />
         <StatCard
           label="Net profit"
@@ -242,13 +234,13 @@ export default function Dashboard() {
           <CardHeader
             icon={Warning}
             title="Loss-making trips"
-            subtitle={`${lossTrips.length} trips me kharcha freight se zyada hai`}
+            subtitle={`${lossTrips.length} trips me kharcha sale se zyada hai`}
           />
           <div className="overflow-x-auto">
             <table className="w-full min-w-max text-sm">
               <thead>
                 <tr>
-                  {["Date", "Party", "Route", "Load", "Freight", "Cost", "Loss"].map((head) => (
+                  {["Date", "Party", "Route", "Sale", "Cost", "Loss"].map((head) => (
                     <th
                       key={head}
                       className="border-b border-ink-200 bg-rose-50 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-ink-500"
@@ -267,10 +259,7 @@ export default function Dashboard() {
                       {trip.from_location} → {trip.to_location}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 font-mono text-ink-700">
-                      {Number(trip.load_tons || 0).toFixed(2)} T
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-ink-700">
-                      {rupees(trip.freight_amount)}
+                      {rupees(trip.sale_total ?? trip.freight_amount)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 font-mono text-amber-600">
                       {rupees(trip.expense_total)}
@@ -303,7 +292,7 @@ export default function Dashboard() {
           <table className="w-full min-w-max text-sm">
             <thead>
               <tr>
-                {[t("f_date"), t("f_party"), t("f_to"), t("acc_freight"), t("kpi_pending"), t("f_status")].map((head) => (
+                {[t("f_date"), t("f_party"), t("f_to"), "Sale", t("kpi_pending"), t("f_status")].map((head) => (
                   <th key={head} className="border-b border-ink-200 bg-ink-50 px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-ink-500">
                     {head}
                   </th>
@@ -318,7 +307,7 @@ export default function Dashboard() {
                   <td className="px-4 py-3 text-ink-600">
                     {trip.from_location} → {trip.to_location}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 font-mono text-ink-700">{rupees(trip.freight_amount)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-mono text-ink-700">{rupees(trip.sale_total ?? trip.freight_amount)}</td>
                   <td className="whitespace-nowrap px-4 py-3 font-mono text-rose-600">{rupees(trip.pending_amount)}</td>
                   <td className="px-4 py-3">
                     <Badge status={trip.status} />

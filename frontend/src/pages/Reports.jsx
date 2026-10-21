@@ -27,9 +27,9 @@ export default function Reports() {
 
   const csv = useMemo(() => {
     if (!rows.length) return "";
-    const header = ["Date", "Party", "Route", "Truck", "Driver", "Status", "Load (tons)", "Rate/Ton", "Cost/Ton", "Freight", "Expenses", "Received", "Pending", "Profit/Loss"];
+    const header = ["Date", "Party", "Route", "Truck", "Driver", "Status", "Sale", "Expenses", "Received", "Pending", "Profit/Loss"];
     const lines = rows.map((row) =>
-      [row.date, row.party_name, row.route, row.truck_no, row.driver_name, row.status, row.load_tons, row.rate_per_ton, row.cost_per_ton, row.freight_amount, row.expense_total, row.received_total, row.pending_amount, row.profit].join(","),
+      [row.date, row.party_name, row.route, row.truck_no, row.driver_name, row.status, row.sale_amount ?? row.freight_amount, row.expense_total, row.received_total, row.pending_amount, row.profit].join(","),
     );
     return [header.join(","), ...lines].join("\n");
   }, [rows]);
@@ -77,8 +77,8 @@ export default function Reports() {
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Total load (tons)" value={`${Number(totals.total_load_tons || 0).toFixed(2)} T`} tone="slate" />
-        <StatCard label="Avg rate / ton" value={rupees(totals.avg_rate_per_ton, true)} tone="brand" />
+        <StatCard label={t("kpi_trips")} value={totals.trips || 0} tone="slate" hint={`${totals.cancelled || 0} ${t("kpi_cancelled_note").toLowerCase()}`} />
+        <StatCard label="Total sale" value={rupees(totals.freight, true)} tone="brand" />
         <StatCard
           label={t("kpi_profit")}
           value={rupees(totals.profit, true)}
@@ -93,12 +93,11 @@ export default function Reports() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <StatCard label={t("kpi_trips")} value={totals.trips || 0} tone="slate" hint={`${totals.cancelled || 0} ${t("kpi_cancelled_note").toLowerCase()}`} />
-        <StatCard label={t("acc_freight")} value={rupees(totals.freight, true)} tone="brand" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t("kpi_expenses")} value={rupees(totals.expenses, true)} tone="amber" />
         <StatCard label={t("kpi_received")} value={rupees(totals.received, true)} tone="emerald" />
         <StatCard label={t("kpi_pending")} value={rupees(totals.pending, true)} tone="amber" />
+        <StatCard label={t("kpi_profit")} value={rupees(totals.profit, true)} tone="sky" />
       </div>
 
       <Card>
@@ -117,8 +116,7 @@ export default function Reports() {
                 <Th>{t("f_party")}</Th>
                 <Th>{t("f_to")}</Th>
                 <Th>{t("f_truck")} / {t("f_driver")}</Th>
-                <Th align="right">Load</Th>
-                <Th align="right">{t("acc_freight")}</Th>
+                <Th align="right">Sale</Th>
                 <Th align="right">{t("kpi_expenses")}</Th>
                 <Th align="right">{t("kpi_received")}</Th>
                 <Th align="right">{t("kpi_pending")}</Th>
@@ -140,19 +138,7 @@ export default function Reports() {
                     <p className="text-ink-500">{row.driver_name}</p>
                   </Td>
                   <Td align="right" className="whitespace-nowrap font-mono">
-                    {row.load_tons > 0 ? (
-                      <>
-                        <span className="font-semibold text-ink-800">{Number(row.load_tons).toFixed(2)}T</span>
-                        {row.rate_per_ton > 0 ? (
-                          <p className="text-[10px] text-ink-400">{rupees(row.rate_per_ton)}/T</p>
-                        ) : null}
-                      </>
-                    ) : (
-                      <span className="text-ink-300">-</span>
-                    )}
-                  </Td>
-                  <Td align="right" className="whitespace-nowrap font-mono">
-                    {rupees(row.freight_amount)}
+                    {rupees(row.sale_amount ?? row.freight_amount)}
                   </Td>
                   <Td align="right" className="whitespace-nowrap font-mono text-amber-600">
                     {rupees(row.expense_total)}
@@ -221,7 +207,7 @@ export default function Reports() {
       <Card>
         <CardBody className="grid gap-3 text-sm sm:grid-cols-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-ink-500">{t("acc_freight")}</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-ink-500">Total sale</p>
             <p className="font-mono text-xl font-bold text-ink-800">{rupees(totals.freight || 0)}</p>
           </div>
           <div>

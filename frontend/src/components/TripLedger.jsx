@@ -39,16 +39,16 @@ export default function TripLedger({ tripId, open, onClose }) {
       .finally(() => setLoading(false));
   }, [open, tripId]);
 
-  const freight = Number(data?.freight_amount || 0);
+  const purchase = Number(data?.purchase_total || 0);
+  const sale = Number(data?.sale_total || 0);
+  const income = sale || Number(data?.freight_amount || 0);
   const cashExpenses = Number(data?.cash_expenses || 0);
   const expenseTotal = Number(data?.expense_total || 0);
   const advance = Number(data?.advance || 0);
   const received = Number(data?.received_total || 0);
   const pending = Number(data?.pending_amount || 0);
   const profit = Number(data?.profit || 0);
-  const margin = freight ? (profit / freight) * 100 : 0;
-  const purchase = Number(data?.purchase_total || 0);
-  const sale = Number(data?.sale_total || 0);
+  const margin = income ? (profit / income) * 100 : 0;
   const extra = Number(data?.extra_expense_total || 0);
   const driverPay = Number(data?.driver_pay_total || 0);
   const tradeExpense = Number(data?.trade_expense || 0);
@@ -97,7 +97,7 @@ export default function TripLedger({ tripId, open, onClose }) {
               <p className="mb-1 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-rose-600">
                 <ArrowUp size={14} weight="bold" /> {t("ledger_charges")}
               </p>
-              <Line label={t("ledger_freight")} value={rupees(freight)} tone="text-emerald-700" />
+              <Line label="Maal becha (income)" value={rupees(income)} tone="text-emerald-700" />
               <Line label={t("ledger_cash_expenses")} value={rupees(cashExpenses)} tone="text-amber-700" />
               <Line
                 label={t("acc_driver_adv")}

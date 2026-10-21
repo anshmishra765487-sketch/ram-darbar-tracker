@@ -158,7 +158,7 @@ export default function TripTrackPanel({ trip, open, onClose }) {
       open={open}
       size="lg"
       title={`Track & Collect — ${trip.party_name}`}
-      subtitle={`${trip.from_location} → ${trip.to_location} • ${Number(trip.load_tons || 0)} tons`}
+      subtitle={`${trip.from_location} → ${trip.to_location}`}
       onClose={onClose}
       footer={
         <Button variant="outline" onClick={onClose}>
@@ -169,8 +169,8 @@ export default function TripTrackPanel({ trip, open, onClose }) {
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-ink-50 px-3 py-2">
-            <p className="text-[11px] font-semibold text-ink-500">Freight</p>
-            <p className="font-mono text-sm font-bold text-ink-800">{rupees(trip.freight_amount)}</p>
+            <p className="text-[11px] font-semibold text-ink-500">Maal becha (Sale)</p>
+            <p className="font-mono text-sm font-bold text-ink-800">{rupees(trip.sale_total ?? trip.freight_amount)}</p>
           </div>
           <div className="rounded-xl bg-emerald-50 px-3 py-2">
             <p className="text-[11px] font-semibold text-emerald-700">Received</p>

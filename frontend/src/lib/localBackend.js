@@ -745,7 +745,7 @@ function dashboard() {
   const expenses = findMany("expenses");
   const active = trips.filter((t) => t.status !== "Cancelled");
 
-  const totalRevenue = active.reduce((s, t) => s + Number(t.freight_amount || 0), 0);
+  const totalRevenue = active.reduce((s, t) => s + (Number(t.freight_amount || 0) || Number(t.sale_total || 0)), 0);
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
   const totalReceived = active.reduce((s, t) => s + Number(t.received_total || 0), 0);
   const totalPending = active.reduce((s, t) => s + Math.max(Number(t.pending_amount || 0), 0), 0);
@@ -766,7 +766,7 @@ function dashboard() {
   const revenueByMonth = {};
   for (const trip of active) {
     const key = String(trip.date || "").slice(0, 7);
-    if (months.includes(key)) revenueByMonth[key] = (revenueByMonth[key] || 0) + Number(trip.freight_amount || 0);
+    if (months.includes(key)) revenueByMonth[key] = (revenueByMonth[key] || 0) + (Number(trip.freight_amount || 0) || Number(trip.sale_total || 0));
   }
   const expensesByMonth = {};
   for (const expense of expenses) {
@@ -855,7 +855,8 @@ function reportsTrips() {
       load_tons: trip.load_tons || 0,
       rate_per_ton: trip.rate_per_ton || 0,
       cost_per_ton: trip.cost_per_ton || 0,
-      freight_amount: trip.freight_amount || 0,
+      freight_amount: trip.freight_amount || trip.sale_amount || 0,
+      sale_amount: trip.sale_amount || 0,
       expense_total: trip.expense_total || 0,
       received_total: trip.received_total || 0,
       pending_amount: trip.pending_amount || 0,
@@ -909,7 +910,7 @@ function partyLedger() {
     }
     const row = rows[party];
     row.trips += 1;
-    row.freight += Number(trip.freight_amount || 0);
+    row.freight += Number(trip.freight_amount || 0) || Number(trip.sale_total || 0);
     row.expenses += Number(trip.expense_total || 0);
     row.received += Number(trip.received_total || 0);
     row.pending += Math.max(Number(trip.pending_amount || 0), 0);
@@ -968,7 +969,7 @@ function outstandingAging() {
       date: rawDate,
       age_days: Math.max(age, 0),
       route: `${trip.from_location || ""} -> ${trip.to_location || ""}`,
-      freight_amount: trip.freight_amount || 0,
+    freight_amount: Number(trip.freight_amount || 0) || Number(trip.sale_total || 0),
       received_total: trip.received_total || 0,
       pending: round2(pending),
       status: trip.status || "",
@@ -991,7 +992,7 @@ function truckWise() {
   const trips = ledgerTrips();
   const rows = trucks.map((truck) => {
     const truckTrips = trips.filter((t) => t.truck_id === truck._id && t.status !== "Cancelled");
-    const freight = truckTrips.reduce((s, t) => s + Number(t.freight_amount || 0), 0);
+    const freight = truckTrips.reduce((s, t) => s + (Number(t.freight_amount || 0) || Number(t.sale_total || 0)), 0);
     const expenses = truckTrips.reduce((s, t) => s + Number(t.expense_total || 0), 0);
     const received = truckTrips.reduce((s, t) => s + Number(t.received_total || 0), 0);
     const pending = truckTrips.reduce((s, t) => s + Math.max(Number(t.pending_amount || 0), 0), 0);
@@ -1066,7 +1067,7 @@ function profitLoss() {
   const incomeByStatus = {};
   for (const trip of active) {
     const status = trip.status || "Pending";
-    incomeByStatus[status] = (incomeByStatus[status] || 0) + Number(trip.freight_amount || 0);
+    incomeByStatus[status] = (incomeByStatus[status] || 0) + (Number(trip.freight_amount || 0) || Number(trip.sale_total || 0));
   }
   const expenseByCategory = {};
   for (const expense of expenses) {
@@ -1075,7 +1076,7 @@ function profitLoss() {
   }
 
   const received = active.reduce((s, t) => s + Number(t.received_total || 0), 0);
-  const billed = active.reduce((s, t) => s + Number(t.freight_amount || 0), 0);
+  const billed = active.reduce((s, t) => s + (Number(t.freight_amount || 0) || Number(t.sale_total || 0)), 0);
   const totalExpenses = Object.values(expenseByCategory).reduce((s, v) => s + v, 0);
   const cashExpenses = expenses.filter((e) => e.category !== "Driver Advance").reduce((s, e) => s + Number(e.amount || 0), 0);
 

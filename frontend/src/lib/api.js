@@ -78,10 +78,8 @@ function biltyLines(trip) {
   row("Driver", trip.driver_name || "-");
   row("Status", trip.status || "-");
   rule();
-  add("FREIGHT & LOAD", { bold: true, size: 12 });
-  row("Load (tons)", Number(trip.load_tons || 0).toFixed(3));
-  row("Rate / ton", money(trip.rate_per_ton));
-  row("Freight", money(trip.freight_amount));
+  add("SALE & PAYMENT", { bold: true, size: 12 });
+  row("Maal becha (Sale)", money(trip.sale_total ?? trip.freight_amount));
   row("Advance", money(trip.advance));
   row("Received (total)", money(trip.received_total));
   row("Pending", money(trip.pending_amount));
@@ -108,7 +106,6 @@ function biltyLines(trip) {
 
   add("SUMMARY", { bold: true, size: 12 });
   row("Profit", money(trip.profit));
-  row("Cost / ton", money(trip.cost_per_ton));
   if (trip.is_loss) add("NOTE: This trip is running at a LOSS.", { bold: true, size: 11 });
   rule();
   add("Thank you. Safe journey.", { size: 10 });
