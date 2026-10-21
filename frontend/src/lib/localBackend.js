@@ -239,13 +239,14 @@ function addTripFinancials(trips, expenses, payments) {
     const sale = Number(trip.sale_amount || 0);
     const extra = Number(trip.extra_expense || 0);
     const driverPay = Number(trip.driver_pay || 0);
+    const income = freight > 0 ? freight : sale;
     trip.expense_total = round2(tripExpense);
     trip.received_total = round2(received);
-    trip.pending_amount = round2(freight - received);
-    trip.profit = round2(freight - tripExpense);
+    trip.pending_amount = round2(income - received);
+    trip.profit = round2(income - tripExpense);
     trip.is_loss = trip.profit < 0;
     trip.load_tons = round3(loadTons);
-    trip.rate_per_ton = loadTons > 0 ? round2(freight / loadTons) : 0;
+    trip.rate_per_ton = loadTons > 0 ? round2(income / loadTons) : 0;
     trip.cost_per_ton = loadTons > 0 ? round2(tripExpense / loadTons) : 0;
     // Maal kharida / becha / extra kharcha
     trip.purchase_total = round2(purchase);
@@ -624,8 +625,9 @@ function createPayment(body) {
   const amount = Number(body.amount);
   const previous = findMany("payments", { trip_id: body.trip_id });
   const already = Number(trip.advance || 0) + previous.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  if (already + amount > Number(trip.freight_amount || 0) + 0.01) {
-    throw httpError(400, "Payment is more than the trip freight");
+  const income = Number(trip.freight_amount || 0) || Number(trip.sale_amount || 0);
+  if (already + amount > income + 0.01) {
+    throw httpError(400, "Payment is more than the trip amount");
   }
   const data = {
     trip_id: body.trip_id,

@@ -28,8 +28,6 @@ const EMPTY = {
   to_location: "",
   truck_id: "",
   driver_id: "",
-  load_tons: "",
-  freight_amount: "",
   advance: "",
   purchase_amount: "",
   sale_amount: "",
@@ -82,10 +80,8 @@ export default function Trips() {
 
   const totals = useMemo(
     () => ({
-      freight: trips.reduce((sum, t) => sum + Number(t.freight_amount || 0), 0),
       pending: trips.reduce((sum, t) => sum + Math.max(Number(t.pending_amount || 0), 0), 0),
       profit: trips.reduce((sum, t) => sum + Number(t.profit || 0), 0),
-      tons: trips.reduce((sum, t) => sum + Number(t.load_tons || 0), 0),
       loss: trips.reduce(
         (sum, t) => sum + (t.is_loss ? Math.abs(Number(t.profit || 0)) : 0),
         0,
@@ -108,11 +104,6 @@ export default function Trips() {
     });
   }, [trips, search, filter]);
 
-  const selectedTruck = useMemo(
-    () => truckMap[form.truck_id] || null,
-    [truckMap, form.truck_id],
-  );
-
   const openCreate = () => {
     setForm({ ...EMPTY, date: todayISO() });
     setExpenseRows([]);
@@ -127,8 +118,6 @@ export default function Trips() {
       to_location: trip.to_location,
       truck_id: trip.truck_id || "",
       driver_id: trip.driver_id || "",
-      load_tons: trip.load_tons || "",
-      freight_amount: trip.freight_amount,
       advance: trip.advance || 0,
       purchase_amount: trip.purchase_amount || "",
       sale_amount: trip.sale_amount || "",
@@ -157,7 +146,7 @@ export default function Trips() {
       toast.error(t("trips_req"));
       return;
     }
-    if (!Number(form.freight_amount) && !Number(form.sale_amount)) {
+    if (!Number(form.sale_amount) && !Number(form.driver_pay)) {
       toast.error(t("trips_freight_req"));
       return;
     }
@@ -165,8 +154,6 @@ export default function Trips() {
       ...form,
       truck_id: form.truck_id || null,
       driver_id: form.driver_id || null,
-      load_tons: Number(form.load_tons || 0),
-      freight_amount: Number(form.freight_amount),
       advance: Number(form.advance || 0),
       purchase_amount: Number(form.purchase_amount || 0),
       sale_amount: Number(form.sale_amount || 0),
@@ -244,7 +231,7 @@ export default function Trips() {
     <div className="space-y-4">
       <PageHeader
         title={t("trips_title")}
-        subtitle={`${t("ledger_freight")} ${rupees(totals.freight)} • ${totals.tons.toFixed(2)} T loaded • ${t("kpi_pending")} ${rupees(totals.pending)} • ${t("ledger_profit")} ${rupees(totals.profit)}${totals.loss > 0 ? ` • Loss ${rupees(totals.loss)}` : ""}`}
+        subtitle={`${trips.length} ${t("kpi_trips").toLowerCase()} • ${t("kpi_pending")} ${rupees(totals.pending)} • ${t("ledger_profit")} ${rupees(totals.profit)}${totals.loss > 0 ? ` • Loss ${rupees(totals.loss)}` : ""}`}
         actions={
           <Button onClick={openCreate}>
             <Plus size={17} weight="bold" /> {t("trips_new")}
@@ -288,8 +275,6 @@ export default function Trips() {
                 <Th>{t("f_date")}</Th>
                 <Th>{t("f_party")} / {t("f_to")}</Th>
                 <Th>{t("f_truck")} / {t("f_driver")}</Th>
-                <Th align="right">Load</Th>
-                <Th align="right">{t("ledger_freight")}</Th>
                 <Th align="right">{t("kpi_expenses")}</Th>
                 <Th align="right">{t("kpi_received")}</Th>
                 <Th align="right">{t("kpi_pending")}</Th>
@@ -317,21 +302,6 @@ export default function Trips() {
                   <Td className="text-xs">
                     <p className="font-mono text-ink-700">{truckMap[trip.truck_id]?.registration_no || "-"}</p>
                     <p className="text-ink-500">{driverMap[trip.driver_id]?.name || "-"}</p>
-                  </Td>
-                  <Td align="right" className="whitespace-nowrap font-mono">
-                    {trip.load_tons > 0 ? (
-                      <>
-                        <span className="font-semibold text-ink-800">{Number(trip.load_tons).toFixed(2)}T</span>
-                        {trip.rate_per_ton > 0 ? (
-                          <p className="text-[10px] text-ink-400">{rupees(trip.rate_per_ton)}/T</p>
-                        ) : null}
-                      </>
-                    ) : (
-                      <span className="text-ink-300">-</span>
-                    )}
-                  </Td>
-                  <Td align="right" className="whitespace-nowrap font-mono">
-                    {rupees(trip.freight_amount)}
                   </Td>
                   <Td align="right" className="whitespace-nowrap font-mono text-amber-600">
                     {rupees(trip.expense_total)}
@@ -444,26 +414,6 @@ export default function Trips() {
               value={form.driver_pay}
               onChange={(e) => setForm({ ...form, driver_pay: e.target.value })}
               placeholder="Driver payment"
-            />
-          </Field>
-          <Field label={t("f_load_tons")} hint={selectedTruck ? `Max ${Number(selectedTruck.capacity_tons || 0)} T` : undefined}>
-            <Input
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              value={form.load_tons}
-              onChange={(e) => setForm({ ...form, load_tons: e.target.value })}
-              placeholder="14.5"
-            />
-          </Field>
-          <Field label={t("f_freight")}>
-            <Input
-              type="number"
-              min="1"
-              value={form.freight_amount}
-              onChange={(e) => setForm({ ...form, freight_amount: e.target.value })}
-              placeholder="28000"
             />
           </Field>
           <Field label={t("f_advance")}>
