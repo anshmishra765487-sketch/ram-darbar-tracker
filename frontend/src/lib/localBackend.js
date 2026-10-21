@@ -238,6 +238,7 @@ function addTripFinancials(trips, expenses, payments) {
     const purchase = Number(trip.purchase_amount || 0);
     const sale = Number(trip.sale_amount || 0);
     const extra = Number(trip.extra_expense || 0);
+    const driverPay = Number(trip.driver_pay || 0);
     trip.expense_total = round2(tripExpense);
     trip.received_total = round2(received);
     trip.pending_amount = round2(freight - received);
@@ -250,8 +251,9 @@ function addTripFinancials(trips, expenses, payments) {
     trip.purchase_total = round2(purchase);
     trip.sale_total = round2(sale);
     trip.extra_expense_total = round2(extra);
+    trip.driver_pay_total = round2(driverPay);
     trip.trade_expense = round2(tripExpense + extra);
-    trip.trade_profit = round2(sale - purchase - extra - tripExpense);
+    trip.trade_profit = round2(sale - purchase - extra - tripExpense - driverPay);
     trip.is_trade_loss = trip.trade_profit < 0;
     trip._date = String(trip.date || "");
   }
@@ -501,6 +503,7 @@ function createTrip(body) {
   data.purchase_amount = Number(data.purchase_amount || 0);
   data.sale_amount = Number(data.sale_amount || 0);
   data.extra_expense = Number(data.extra_expense || 0);
+  data.driver_pay = Number(data.driver_pay || 0);
   data.created_at = nowIso();
   checkLoad(data.truck_id, data.load_tons);
   const _id = insertOne("trips", data);
@@ -519,6 +522,7 @@ function updateTrip(id, body) {
   if (patch.purchase_amount !== undefined) patch.purchase_amount = Number(patch.purchase_amount || 0);
   if (patch.sale_amount !== undefined) patch.sale_amount = Number(patch.sale_amount || 0);
   if (patch.extra_expense !== undefined) patch.extra_expense = Number(patch.extra_expense || 0);
+  if (patch.driver_pay !== undefined) patch.driver_pay = Number(patch.driver_pay || 0);
   checkLoad(patch.truck_id || current.truck_id, Number(patch.load_tons !== undefined ? patch.load_tons : current.load_tons || 0));
   updateOne("trips", id, patch);
 
@@ -1023,6 +1027,7 @@ function driverPayouts() {
     const driverTrips = trips.filter((t) => t.driver_id === driver._id && t.status !== "Cancelled");
     const salary = Number(driver.salary || 0);
     const advance = Number(driver.advance || 0);
+    const tripPay = driverTrips.reduce((s, t) => s + Number(t.driver_pay || 0), 0);
     return {
       _id: driver._id,
       name: driver.name || "",
@@ -1030,9 +1035,10 @@ function driverPayouts() {
       license_no: driver.license_no || "",
       trips: driverTrips.length,
       freight: round2(driverTrips.reduce((s, t) => s + Number(t.freight_amount || 0), 0)),
+      trip_pay: round2(tripPay),
       salary,
       advance,
-      balance: round2(salary - advance),
+      balance: round2(tripPay - advance),
     };
   });
   rows.sort((a, b) => b.balance - a.balance);
@@ -1040,6 +1046,7 @@ function driverPayouts() {
     rows,
     totals: {
       drivers: rows.length,
+      trip_pay: round2(rows.reduce((s, r) => s + r.trip_pay, 0)),
       salary: round2(rows.reduce((s, r) => s + r.salary, 0)),
       advance: round2(rows.reduce((s, r) => s + r.advance, 0)),
       balance: round2(rows.reduce((s, r) => s + r.balance, 0)),

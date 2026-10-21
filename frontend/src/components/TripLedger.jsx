@@ -50,9 +50,10 @@ export default function TripLedger({ tripId, open, onClose }) {
   const purchase = Number(data?.purchase_total || 0);
   const sale = Number(data?.sale_total || 0);
   const extra = Number(data?.extra_expense_total || 0);
+  const driverPay = Number(data?.driver_pay_total || 0);
   const tradeExpense = Number(data?.trade_expense || 0);
   const tradeProfit = Number(data?.trade_profit || 0);
-  const showTrade = purchase > 0 || sale > 0 || extra > 0;
+  const showTrade = purchase > 0 || sale > 0 || extra > 0 || driverPay > 0;
   const payments = data?.payments || [];
   const expenses = data?.expenses || [];
 
@@ -153,8 +154,9 @@ export default function TripLedger({ tripId, open, onClose }) {
               <Line label="Maal becha" value={rupees(sale)} tone="text-emerald-700" />
               <Line label="Kharcha" value={rupees(expenseTotal)} tone="text-amber-700" />
               <Line label="Extra kharcha" value={rupees(extra)} tone="text-amber-700" />
+              <Line label="Driver payment" value={rupees(driverPay)} tone="text-rose-700" />
               <Total
-                label="Net profit (Sale - Purchase - Kharcha)"
+                label="Net profit (Sale - Purchase - Kharcha - Driver)"
                 value={rupees(tradeProfit)}
                 tone={tradeProfit >= 0 ? "text-emerald-700" : "text-rose-700"}
               />

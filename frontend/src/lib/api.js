@@ -92,6 +92,7 @@ function biltyLines(trip) {
   row("Maal becha", money(trip.sale_total));
   row("Kharcha", money(trip.expense_total));
   row("Extra kharcha", money(trip.extra_expense_total));
+  row("Driver payment", money(trip.driver_pay_total));
   row("Net profit", money(trip.trade_profit));
   rule();
 

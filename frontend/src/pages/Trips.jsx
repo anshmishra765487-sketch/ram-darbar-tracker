@@ -34,6 +34,7 @@ const EMPTY = {
   purchase_amount: "",
   sale_amount: "",
   extra_expense: "",
+  driver_pay: "",
   date: todayISO(),
   status: "Pending",
   notes: "",
@@ -132,6 +133,7 @@ export default function Trips() {
       purchase_amount: trip.purchase_amount || "",
       sale_amount: trip.sale_amount || "",
       extra_expense: trip.extra_expense || "",
+      driver_pay: trip.driver_pay || "",
       date: String(trip.date).slice(0, 10),
       status: trip.status,
       notes: trip.notes || "",
@@ -169,6 +171,7 @@ export default function Trips() {
       purchase_amount: Number(form.purchase_amount || 0),
       sale_amount: Number(form.sale_amount || 0),
       extra_expense: Number(form.extra_expense || 0),
+      driver_pay: Number(form.driver_pay || 0),
     };
     setBusy(true);
     try {
@@ -433,6 +436,15 @@ export default function Trips() {
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field label="Driver ka payment (Rs)" hint="Is trip ke hisab se driver ko kitna">
+            <Input
+              type="number"
+              min="0"
+              value={form.driver_pay}
+              onChange={(e) => setForm({ ...form, driver_pay: e.target.value })}
+              placeholder="Driver payment"
+            />
           </Field>
           <Field label={t("f_load_tons")} hint={selectedTruck ? `Max ${Number(selectedTruck.capacity_tons || 0)} T` : undefined}>
             <Input

@@ -268,13 +268,13 @@ function DriverPayouts({ data }) {
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label={t("nav_drivers")} value={totals.drivers} icon={UserFocus} tone="slate" />
-        <StatCard label={t("acc_salary")} value={rupees(totals.salary, true)} tone="brand" />
+        <StatCard label="Trip Payment" value={rupees(totals.trip_pay, true)} tone="brand" />
         <StatCard label={t("acc_advance")} value={rupees(totals.advance, true)} tone="amber" />
         <StatCard label={t("acc_balance_payable")} value={rupees(totals.balance, true)} tone="rose" />
       </div>
 
       <Card>
-        <CardHeader title={t("tab_drivers")} subtitle={t("acc_sub")} />
+        <CardHeader title={t("tab_drivers")} subtitle="Driver ko trip ke hisab se payment" />
         {rows.length === 0 ? (
           <EmptyState title={t("drivers_empty")} hint={t("drivers_empty_hint")} />
         ) : (
@@ -283,10 +283,8 @@ function DriverPayouts({ data }) {
               <tr>
                 <Th>{t("f_driver")}</Th>
                 <Th>{t("f_phone")}</Th>
-                <Th>{t("f_license")}</Th>
                 <Th align="right">{t("kpi_trips")}</Th>
-                <Th align="right">{t("acc_freight")}</Th>
-                <Th align="right">{t("f_salary")}</Th>
+                <Th align="right">Trip Payment</Th>
                 <Th align="right">{t("f_advance")}</Th>
                 <Th align="right">{t("acc_balance_payable")}</Th>
               </tr>
@@ -294,16 +292,17 @@ function DriverPayouts({ data }) {
             <tbody>
               {rows.map((row) => (
                 <tr key={row._id} className="hover:bg-ink-50">
-                  <Td className="font-semibold text-ink-800">{row.name}</Td>
+                  <Td className="font-semibold text-ink-800">
+                    {row.name}
+                    <p className="font-mono text-[11px] text-ink-400">{row.license_no}</p>
+                  </Td>
                   <Td>
                     <a href={`tel:${row.phone}`} className="font-mono text-xs text-brand-600 hover:underline">
                       {row.phone}
                     </a>
                   </Td>
-                  <Td className="font-mono text-xs">{row.license_no}</Td>
                   <Td align="right" className="font-mono">{row.trips}</Td>
-                  <Td align="right" className="whitespace-nowrap font-mono">{rupees(row.freight)}</Td>
-                  <Td align="right" className="whitespace-nowrap font-mono">{rupees(row.salary)}</Td>
+                  <Td align="right" className="whitespace-nowrap font-mono text-brand-700">{rupees(row.trip_pay)}</Td>
                   <Td align="right" className="whitespace-nowrap font-mono text-amber-600">{rupees(row.advance)}</Td>
                   <Td align="right" className="whitespace-nowrap font-mono font-semibold">{rupees(row.balance)}</Td>
                 </tr>
