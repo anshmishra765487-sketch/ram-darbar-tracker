@@ -104,6 +104,16 @@ export default function Trips() {
     });
   }, [trips, search, filter]);
 
+  const formExpenseTotal = expenseRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const formSale = Number(form.sale_amount || 0);
+  const formDriver = Number(form.driver_pay || 0);
+  const formNet =
+    formSale -
+    Number(form.purchase_amount || 0) -
+    formExpenseTotal -
+    Number(form.extra_expense || 0) -
+    formDriver;
+
   const openCreate = () => {
     setForm({ ...EMPTY, date: todayISO() });
     setExpenseRows([]);
@@ -470,6 +480,39 @@ export default function Trips() {
               placeholder="Extra kharcha"
             />
           </Field>
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-3 sm:col-span-2">
+            <p className="mb-1 text-xs font-extrabold uppercase tracking-wide text-indigo-600">Hisab</p>
+            <div className="flex justify-between py-0.5 text-sm">
+              <span className="text-ink-500">Maal becha</span>
+              <span className="font-mono font-semibold text-emerald-700">{rupees(formSale)}</span>
+            </div>
+            <div className="flex justify-between py-0.5 text-sm">
+              <span className="text-ink-500">Driver payment</span>
+              <span className="font-mono font-semibold text-amber-700">- {rupees(formDriver)}</span>
+            </div>
+            <div className="mt-1 flex justify-between border-t border-indigo-200 pt-1 text-sm font-bold">
+              <span className="text-ink-700">Maal becha − Driver payment</span>
+              <span className="font-mono text-indigo-700">{rupees(formSale - formDriver)}</span>
+            </div>
+            <div className="mt-2 flex justify-between border-t border-dashed border-indigo-200 pt-2 py-0.5 text-sm">
+              <span className="text-ink-500">− Maal kharida</span>
+              <span className="font-mono text-rose-700">{rupees(Number(form.purchase_amount || 0))}</span>
+            </div>
+            <div className="flex justify-between py-0.5 text-sm">
+              <span className="text-ink-500">− Kharcha (Trip Expenses)</span>
+              <span className="font-mono text-amber-700">{rupees(formExpenseTotal)}</span>
+            </div>
+            <div className="flex justify-between py-0.5 text-sm">
+              <span className="text-ink-500">− Extra kharcha</span>
+              <span className="font-mono text-amber-700">{rupees(Number(form.extra_expense || 0))}</span>
+            </div>
+            <div className="mt-1 flex justify-between border-t border-indigo-200 pt-1 text-sm font-extrabold">
+              <span className="text-ink-700">Net total</span>
+              <span className={`font-mono ${formNet >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                {rupees(formNet)}
+              </span>
+            </div>
+          </div>
           <Field label={t("f_date")}>
             <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
           </Field>
