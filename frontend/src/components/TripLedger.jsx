@@ -47,6 +47,12 @@ export default function TripLedger({ tripId, open, onClose }) {
   const pending = Number(data?.pending_amount || 0);
   const profit = Number(data?.profit || 0);
   const margin = freight ? (profit / freight) * 100 : 0;
+  const purchase = Number(data?.purchase_total || 0);
+  const sale = Number(data?.sale_total || 0);
+  const extra = Number(data?.extra_expense_total || 0);
+  const tradeExpense = Number(data?.trade_expense || 0);
+  const tradeProfit = Number(data?.trade_profit || 0);
+  const showTrade = purchase > 0 || sale > 0 || extra > 0;
   const payments = data?.payments || [];
   const expenses = data?.expenses || [];
 
@@ -138,6 +144,23 @@ export default function TripLedger({ tripId, open, onClose }) {
             </div>
           </div>
 
+          {showTrade ? (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-3">
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-indigo-600">
+                <Coins size={14} weight="bold" /> Maal / Trading
+              </p>
+              <Line label="Maal kharida" value={rupees(purchase)} tone="text-rose-700" />
+              <Line label="Maal becha" value={rupees(sale)} tone="text-emerald-700" />
+              <Line label="Kharcha" value={rupees(expenseTotal)} tone="text-amber-700" />
+              <Line label="Extra kharcha" value={rupees(extra)} tone="text-amber-700" />
+              <Total
+                label="Net profit (Sale - Purchase - Kharcha)"
+                value={rupees(tradeProfit)}
+                tone={tradeProfit >= 0 ? "text-emerald-700" : "text-rose-700"}
+              />
+            </div>
+          ) : null}
+
           <div className="grid gap-2 rounded-xl bg-ink-900 p-3 text-white sm:grid-cols-4">
             <div>
               <p className="flex items-center gap-1 text-[11px] text-ink-400">
@@ -149,7 +172,7 @@ export default function TripLedger({ tripId, open, onClose }) {
               <p className="flex items-center gap-1 text-[11px] text-ink-400">
                 <Receipt size={13} /> {t("acc_expense_total_of")}
               </p>
-              <p className="font-mono text-lg font-extrabold text-rose-400">{rupees(expenseTotal)}</p>
+              <p className="font-mono text-lg font-extrabold text-rose-400">{rupees(tradeExpense)}</p>
             </div>
             <div>
               <p className="flex items-center gap-1 text-[11px] text-ink-400">
@@ -161,6 +184,18 @@ export default function TripLedger({ tripId, open, onClose }) {
                 }`}
               >
                 {margin.toFixed(1)}%
+              </p>
+            </div>
+            <div>
+              <p className="flex items-center gap-1 text-[11px] text-ink-400">
+                <Coins size={13} /> {showTrade ? "Trading profit" : t("ledger_profit")}
+              </p>
+              <p
+                className={`font-mono text-lg font-extrabold ${
+                  (showTrade ? tradeProfit : profit) >= 0 ? "text-emerald-400" : "text-rose-400"
+                }`}
+              >
+                {rupees(showTrade ? tradeProfit : profit)}
               </p>
             </div>
           </div>

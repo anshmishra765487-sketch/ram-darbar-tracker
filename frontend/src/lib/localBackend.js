@@ -235,6 +235,9 @@ function addTripFinancials(trips, expenses, payments) {
     const tripExpense = expenseByTrip[id] || 0;
     const received = advance + (paymentByTrip[id] || 0);
     const loadTons = Number(trip.load_tons || 0);
+    const purchase = Number(trip.purchase_amount || 0);
+    const sale = Number(trip.sale_amount || 0);
+    const extra = Number(trip.extra_expense || 0);
     trip.expense_total = round2(tripExpense);
     trip.received_total = round2(received);
     trip.pending_amount = round2(freight - received);
@@ -243,6 +246,13 @@ function addTripFinancials(trips, expenses, payments) {
     trip.load_tons = round3(loadTons);
     trip.rate_per_ton = loadTons > 0 ? round2(freight / loadTons) : 0;
     trip.cost_per_ton = loadTons > 0 ? round2(tripExpense / loadTons) : 0;
+    // Maal kharida / becha / extra kharcha
+    trip.purchase_total = round2(purchase);
+    trip.sale_total = round2(sale);
+    trip.extra_expense_total = round2(extra);
+    trip.trade_expense = round2(tripExpense + extra);
+    trip.trade_profit = round2(sale - purchase - extra - tripExpense);
+    trip.is_trade_loss = trip.trade_profit < 0;
     trip._date = String(trip.date || "");
   }
   return trips;
@@ -488,6 +498,9 @@ function createTrip(body) {
   data.load_tons = Number(data.load_tons || 0);
   data.freight_amount = Number(data.freight_amount || 0);
   data.advance = Number(data.advance || 0);
+  data.purchase_amount = Number(data.purchase_amount || 0);
+  data.sale_amount = Number(data.sale_amount || 0);
+  data.extra_expense = Number(data.extra_expense || 0);
   data.created_at = nowIso();
   checkLoad(data.truck_id, data.load_tons);
   const _id = insertOne("trips", data);
@@ -503,6 +516,9 @@ function updateTrip(id, body) {
   if (patch.load_tons !== undefined) patch.load_tons = Number(patch.load_tons || 0);
   if (patch.freight_amount !== undefined) patch.freight_amount = Number(patch.freight_amount || 0);
   if (patch.advance !== undefined) patch.advance = Number(patch.advance || 0);
+  if (patch.purchase_amount !== undefined) patch.purchase_amount = Number(patch.purchase_amount || 0);
+  if (patch.sale_amount !== undefined) patch.sale_amount = Number(patch.sale_amount || 0);
+  if (patch.extra_expense !== undefined) patch.extra_expense = Number(patch.extra_expense || 0);
   checkLoad(patch.truck_id || current.truck_id, Number(patch.load_tons !== undefined ? patch.load_tons : current.load_tons || 0));
   updateOne("trips", id, patch);
 

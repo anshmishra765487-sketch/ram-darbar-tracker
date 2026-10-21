@@ -31,6 +31,9 @@ const EMPTY = {
   load_tons: "",
   freight_amount: "",
   advance: "",
+  purchase_amount: "",
+  sale_amount: "",
+  extra_expense: "",
   date: todayISO(),
   status: "Pending",
   notes: "",
@@ -126,6 +129,9 @@ export default function Trips() {
       load_tons: trip.load_tons || "",
       freight_amount: trip.freight_amount,
       advance: trip.advance || 0,
+      purchase_amount: trip.purchase_amount || "",
+      sale_amount: trip.sale_amount || "",
+      extra_expense: trip.extra_expense || "",
       date: String(trip.date).slice(0, 10),
       status: trip.status,
       notes: trip.notes || "",
@@ -149,7 +155,7 @@ export default function Trips() {
       toast.error(t("trips_req"));
       return;
     }
-    if (!Number(form.freight_amount)) {
+    if (!Number(form.freight_amount) && !Number(form.sale_amount)) {
       toast.error(t("trips_freight_req"));
       return;
     }
@@ -160,6 +166,9 @@ export default function Trips() {
       load_tons: Number(form.load_tons || 0),
       freight_amount: Number(form.freight_amount),
       advance: Number(form.advance || 0),
+      purchase_amount: Number(form.purchase_amount || 0),
+      sale_amount: Number(form.sale_amount || 0),
+      extra_expense: Number(form.extra_expense || 0),
     };
     setBusy(true);
     try {
@@ -295,6 +304,11 @@ export default function Trips() {
                     <p className="text-xs text-ink-500">
                       {trip.from_location} → {trip.to_location}
                     </p>
+                    {Number(trip.sale_total || trip.purchase_total) > 0 ? (
+                      <p className="text-[11px] text-indigo-500">
+                        Maal: {rupees(trip.purchase_total)} → {rupees(trip.sale_total)}
+                      </p>
+                    ) : null}
                     {trip.goods ? <p className="text-[11px] text-ink-400">{trip.goods}</p> : null}
                   </Td>
                   <Td className="text-xs">
@@ -447,6 +461,33 @@ export default function Trips() {
               value={form.advance}
               onChange={(e) => setForm({ ...form, advance: e.target.value })}
               placeholder="10000"
+            />
+          </Field>
+          <Field label="Maal kharida (Rs)">
+            <Input
+              type="number"
+              min="0"
+              value={form.purchase_amount}
+              onChange={(e) => setForm({ ...form, purchase_amount: e.target.value })}
+              placeholder="Kitne ka maal liya"
+            />
+          </Field>
+          <Field label="Maal becha (Rs)">
+            <Input
+              type="number"
+              min="0"
+              value={form.sale_amount}
+              onChange={(e) => setForm({ ...form, sale_amount: e.target.value })}
+              placeholder="Kitne ka sell kiya"
+            />
+          </Field>
+          <Field label="Extra kharcha (Rs)">
+            <Input
+              type="number"
+              min="0"
+              value={form.extra_expense}
+              onChange={(e) => setForm({ ...form, extra_expense: e.target.value })}
+              placeholder="Extra kharcha"
             />
           </Field>
           <Field label={t("f_date")}>

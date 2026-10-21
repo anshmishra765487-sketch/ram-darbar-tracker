@@ -87,6 +87,14 @@ function biltyLines(trip) {
   row("Pending", money(trip.pending_amount));
   rule();
 
+  add("MAAL / TRADING", { bold: true, size: 12 });
+  row("Maal kharida", money(trip.purchase_total));
+  row("Maal becha", money(trip.sale_total));
+  row("Kharcha", money(trip.expense_total));
+  row("Extra kharcha", money(trip.extra_expense_total));
+  row("Net profit", money(trip.trade_profit));
+  rule();
+
   if (trip.expenses && trip.expenses.length) {
     add("EXPENSES", { bold: true, size: 12 });
     for (const expense of trip.expenses) {
