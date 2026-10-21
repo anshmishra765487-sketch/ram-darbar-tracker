@@ -3,6 +3,7 @@ import { Books, FilePdf, MagnifyingGlass, MapPin, PencilSimple, Plus, Trash } fr
 import { toast } from "sonner";
 import { api, downloadBilty, errorMessage } from "../lib/api";
 import {
+  EXPENSE_CATEGORIES,
   TRIP_STATUSES,
   prettyDate,
   rupees,
@@ -25,7 +26,6 @@ const EMPTY = {
   party_name: "",
   from_location: "",
   to_location: "",
-  goods: "",
   truck_id: "",
   driver_id: "",
   load_tons: "",
@@ -43,6 +43,7 @@ export default function Trips() {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(EMPTY);
+  const [expenseRows, setExpenseRows] = useState([]);
   const [editing, setEditing] = useState(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -110,6 +111,7 @@ export default function Trips() {
 
   const openCreate = () => {
     setForm({ ...EMPTY, date: todayISO() });
+    setExpenseRows([]);
     setEditing(null);
     setOpen(true);
   };
@@ -119,7 +121,6 @@ export default function Trips() {
       party_name: trip.party_name,
       from_location: trip.from_location,
       to_location: trip.to_location,
-      goods: trip.goods || "",
       truck_id: trip.truck_id || "",
       driver_id: trip.driver_id || "",
       load_tons: trip.load_tons || "",
@@ -129,9 +130,19 @@ export default function Trips() {
       status: trip.status,
       notes: trip.notes || "",
     });
+    setExpenseRows([]);
     setEditing(trip._id);
     setOpen(true);
   };
+
+  const addExpenseRow = () =>
+    setExpenseRows((rows) => [...rows, { category: EXPENSE_CATEGORIES[0], amount: "", note: "" }]);
+
+  const updateExpenseRow = (index, patch) =>
+    setExpenseRows((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+
+  const removeExpenseRow = (index) =>
+    setExpenseRows((rows) => rows.filter((_, i) => i !== index));
 
   const save = async () => {
     if (!form.party_name.trim() || !form.from_location.trim() || !form.to_location.trim()) {
@@ -154,17 +165,34 @@ export default function Trips() {
     try {
       if (editing) {
         await api.put(`/trips/${editing}`, payload);
+        await saveExpenses(editing);
         toast.success(t("trips_updated"));
       } else {
-        await api.post("/trips", payload);
+        const created = await api.post("/trips", payload);
+        const newTripId = created.data._id;
+        await saveExpenses(newTripId);
         toast.success(t("trips_created"));
       }
       setOpen(false);
+      setExpenseRows([]);
       load();
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const saveExpenses = async (tripId) => {
+    const rows = expenseRows.filter((row) => Number(row.amount) > 0);
+    for (const row of rows) {
+      await api.post("/expenses", {
+        trip_id: tripId,
+        category: row.category,
+        amount: Number(row.amount),
+        note: row.note,
+        date: form.date,
+      });
     }
   };
 
@@ -366,9 +394,6 @@ export default function Trips() {
           <Field label={t("f_party")}>
             <Input value={form.party_name} onChange={(e) => setForm({ ...form, party_name: e.target.value })} placeholder="Sharma Traders" />
           </Field>
-          <Field label={t("f_goods")}>
-            <Input value={form.goods} onChange={(e) => setForm({ ...form, goods: e.target.value })} placeholder="Cement Bags (200)" />
-          </Field>
           <Field label={t("f_from")}>
             <Input value={form.from_location} onChange={(e) => setForm({ ...form, from_location: e.target.value })} placeholder="Delhi" />
           </Field>
@@ -443,6 +468,58 @@ export default function Trips() {
               placeholder={t("f_notes")}
             />
           </Field>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-ink-200 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-bold text-ink-800">Trip Expenses</p>
+              <p className="text-xs text-ink-400">Is trip ke kharche (optional)</p>
+            </div>
+            <Button type="button" variant="outline" onClick={addExpenseRow}>
+              <Plus size={15} weight="bold" /> Add
+            </Button>
+          </div>
+
+          {expenseRows.length === 0 ? (
+            <p className="text-xs text-ink-400">Abhi koi expense nahi. "Add" dabao.</p>
+          ) : (
+            <div className="space-y-2">
+              {expenseRows.map((row, index) => (
+                <div key={index} className="grid grid-cols-[1fr_auto] gap-2 sm:grid-cols-[1fr_1fr_1.4fr_auto]">
+                  <Select
+                    value={row.category}
+                    onChange={(e) => updateExpenseRow(index, { category: e.target.value })}
+                  >
+                    {EXPENSE_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </Select>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="Amount"
+                    value={row.amount}
+                    onChange={(e) => updateExpenseRow(index, { amount: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Note (optional)"
+                    value={row.note}
+                    onChange={(e) => updateExpenseRow(index, { note: e.target.value })}
+                    className="col-span-2 sm:col-span-1"
+                  />
+                  <IconButton type="button" label="Remove" onClick={() => removeExpenseRow(index)}>
+                    <Trash size={16} className="text-rose-600" />
+                  </IconButton>
+                </div>
+              ))}
+              <p className="text-right text-xs font-semibold text-ink-600">
+                Total: {rupees(expenseRows.reduce((sum, row) => sum + Number(row.amount || 0), 0))}
+              </p>
+            </div>
+          )}
         </div>
       </Modal>
 

@@ -1,4 +1,5 @@
 import { request } from "./localBackend";
+import { beforeLogin, schedulePush } from "./cloudSync";
 
 // Offline app: koi network / backend nahi. Sab kuch localStorage me chalta hai.
 // Purana axios wala code hataya gaya, lekin response ka shape same rakha
@@ -13,7 +14,22 @@ export const api = {
 };
 
 async function call(method, url, body, config) {
+  const upper = String(method).toUpperCase();
+  const trimmed = String(url).split("?")[0];
+  const skipPush = trimmed === "/auth/login" || trimmed === "/auth/otp/verify" || trimmed === "/auth/signup";
+
+  // Login se pehle us number ka cloud data pull karo taaki is device par bhi dikhe.
+  if (upper === "POST" && (trimmed === "/auth/login" || trimmed === "/auth/otp/verify")) {
+    await beforeLogin(body && (body.identifier || body.phone));
+  }
+
   const data = request(method, url, body);
+
+  // Kisi bhi badlav ko cloud par bhej do (login/signup alag se handle hote hain).
+  if (["POST", "PUT", "DELETE"].includes(upper) && !skipPush) {
+    schedulePush();
+  }
+
   if (config && config.responseType === "blob") {
     return { data, status: 200, config: config || {} };
   }

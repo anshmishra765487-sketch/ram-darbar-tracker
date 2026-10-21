@@ -1191,3 +1191,27 @@ export function resetLocalData() {
   DB = freshDb();
   persist();
 }
+
+// --- cloud bridge (Firebase sync ke liye) --------------------------------
+
+export function phoneKey(value) {
+  return normalizePhone(value);
+}
+
+export function getActivePhone() {
+  const user = currentUserRecord();
+  return user ? normalizePhone(user.phone) : "";
+}
+
+export function getDatabase() {
+  return JSON.parse(JSON.stringify(DB));
+}
+
+export function setDatabase(next) {
+  if (!next || typeof next !== "object") return;
+  const rebuilt = {};
+  for (const name of COLLECTIONS) rebuilt[name] = Array.isArray(next[name]) ? next[name] : [];
+  if (!rebuilt.users.length) rebuilt.users.push({ ...OWNER, created_at: nowIso() });
+  DB = rebuilt;
+  persist();
+}

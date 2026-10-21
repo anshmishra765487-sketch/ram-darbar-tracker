@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
+import { start as startCloud, schedulePush as pushCloud, pushAccount } from "./cloudSync";
 
 const TOKEN_KEY = "rdt_token";
 const USER_KEY = "rdt_user";
@@ -49,6 +50,9 @@ export function AuthProvider({ children }) {
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
     setToken(data.access_token);
     setUser(data.user);
+    // Login hone ke baad cloud sync chalu karo.
+    startCloud();
+    pushCloud();
     return data.user;
   }, []);
 
@@ -70,6 +74,8 @@ export function AuthProvider({ children }) {
         password,
         email: email?.trim() || undefined,
       });
+      // Naye account ko cloud par bhi bana do.
+      pushAccount(phone.trim());
       return res.data.user;
     },
     [],
@@ -92,6 +98,8 @@ export function AuthProvider({ children }) {
       code: String(code).trim(),
       new_password: newPassword,
     });
+    // Naya password cloud par bhi update kar do.
+    pushAccount(identifier.trim());
     return res.data;
   }, []);
 

@@ -5,9 +5,17 @@ import App from "./App";
 import { AuthProvider } from "./lib/auth";
 import { I18nProvider } from "./lib/i18n";
 import { ensureSession } from "./lib/localBackend";
+import { CONFIGURED } from "./lib/firebase";
+import { resume as resumeCloud } from "./lib/cloudSync";
 import "./index.css";
 
-ensureSession();
+if (CONFIGURED) {
+  // Cloud mode: login screen dikhao; session pehle se ho to data pull karo.
+  if (localStorage.getItem("rdt_token")) resumeCloud();
+} else {
+  // Offline mode: bina login seedhe owner ke roop me kholo.
+  ensureSession();
+}
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
