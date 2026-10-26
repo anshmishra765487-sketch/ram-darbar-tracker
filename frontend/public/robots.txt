@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Sitemap. Domain badalne par yahan URL update karo.
+Sitemap: https://anshmishra765487-sketch.github.io/ram-darbar-tracker/sitemap.xml

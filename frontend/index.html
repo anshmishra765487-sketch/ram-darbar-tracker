@@ -4,7 +4,43 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f97316" />
-    <title>Ram Darbar Tracker - Transport Management</title>
+
+    <title>Ram Darbar Tracker — Truck Transport & Bilty Management App</title>
+
+    <meta
+      name="description"
+      content="Ram Darbar Tracker is a free truck transport management app — record trips and bilty, trucks, drivers, expenses, party payments, outstanding dues and profit &amp; loss reports. Works offline on mobile and desktop."
+    />
+    <meta
+      name="keywords"
+      content="Ram Darbar Tracker, ram darbar transport, truck transport management app, bilty app, transport ledger, truck hisab, driver payment, trip expense tracker, freight accounting, India transport software"
+    />
+    <meta name="author" content="Ram Darbar Transport" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="language" content="English" />
+    <meta name="geo.region" content="IN" />
+
+    <!-- Canonical + social sharing. Domain badalne par sirf yahan URL update karo. -->
+    <link rel="canonical" href="https://anshmishra765487-sketch.github.io/ram-darbar-tracker/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Ram Darbar Tracker" />
+    <meta property="og:title" content="Ram Darbar Tracker — Truck Transport & Bilty Management App" />
+    <meta
+      property="og:description"
+      content="Free truck transport accounting: bilty, trips, trucks, drivers, kharcha, party payments, pending dues and profit reports. Works offline."
+    />
+    <meta property="og:url" content="https://anshmishra765487-sketch.github.io/ram-darbar-tracker/" />
+    <meta property="og:locale" content="en_IN" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Ram Darbar Tracker — Truck Transport & Bilty Management App" />
+    <meta
+      name="twitter:description"
+      content="Free truck transport accounting: bilty, trips, trucks, drivers, kharcha, party payments, pending dues and profit reports."
+    />
+
+    <!-- Google Search Console: verification meta tag yahan paste karo (Search Console > HTML tag). -->
+    <!-- <meta name="google-site-verification" content="PASTE_VERIFICATION_CODE" /> -->
+
     <!--
       Google Fonts hata diye gaye hain. Wahan ka CSS render-blocking hai aur
       kuch networks (mobile data / corporate) par hang ho jata hai, jisse page
@@ -14,10 +50,49 @@
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128666;</text></svg>"
     />
+    <link rel="manifest" href="manifest.webmanifest" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Ram Darbar Tracker",
+        "alternateName": ["Ram Darbar Transport Tracker", "Ram Darbar Truck Tracker"],
+        "applicationCategory": "BusinessApplication",
+        "applicationSubCategory": "Transport Management",
+        "operatingSystem": "Web, Android, iOS",
+        "inLanguage": "en-IN",
+        "url": "https://anshmishra765487-sketch.github.io/ram-darbar-tracker/",
+        "description": "Truck transport business accounting app for trips, bilty, trucks, drivers, expenses, party payments, outstanding dues and profit and loss reports.",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+        "featureList": [
+          "Trip and bilty management",
+          "Truck and driver records",
+          "Expense and kharcha tracking",
+          "Party payments and pending dues",
+          "Outstanding aging report",
+          "Truck-wise profit and loss",
+          "Printable bilty PDF"
+        ],
+        "publisher": {
+          "@type": "Organization",
+          "name": "Ram Darbar Transport"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
-    <noscript>This app needs JavaScript enabled.</noscript>
+    <noscript>
+      <h1>Ram Darbar Tracker — Truck Transport &amp; Bilty Management</h1>
+      <p>
+        Ram Darbar Tracker is a free transport management app for truck owners and transporters. Record
+        trips and bilty details, manage trucks and drivers, track fuel and maintenance expenses, collect
+        party payments, watch outstanding dues, and see trip-wise plus truck-wise profit and loss — all in
+        one place. It also generates a printable bilty PDF for every consignment.
+      </p>
+      <p>This app needs JavaScript enabled in your browser.</p>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
