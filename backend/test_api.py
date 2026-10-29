@@ -39,7 +39,7 @@ with client:
     check("no token -> 401", client.get("/api/trips").status_code == 401)
     check("garbage token -> 401", client.get("/api/trips", headers={"Authorization": "Bearer nope"}).status_code == 401)
 
-    bad = client.post("/api/auth/login", json={"identifier": "owner@ramdarbar.com", "password": "wrong"})
+    bad = client.post("/api/auth/login", json={"identifier": "anshmishra765487@gmail.com", "password": "wrong"})
     check("wrong password -> 401", bad.status_code == 401, bad.json().get("detail", ""))
 
     # identifier trim + lowercase
@@ -49,16 +49,16 @@ with client:
     check("login works", res.status_code == 200, str(res.status_code))
     headers = {"Authorization": f"Bearer {res.json()['access_token']}"}
 
-    again = client.post("/api/auth/login", json={"identifier": "owner@ramdarbar.com", "password": "ramdarbar123"})
+    again = client.post("/api/auth/login", json={"identifier": "anshmishra765487@gmail.com", "password": "ramdarbar123"})
     check("login repeat (password hash intact)", again.status_code == 200, str(again.status_code))
     headers = {"Authorization": f"Bearer {again.json()['access_token']}"}
 
     codes = [
-        client.post("/api/auth/login", json={"identifier": "owner@ramdarbar.com", "password": "nope"}).status_code
+        client.post("/api/auth/login", json={"identifier": "anshmishra765487@gmail.com", "password": "nope"}).status_code
         for _ in range(5)
     ]
     check("5 wrong attempts -> 429 lockout", codes[-1] == 429, str(codes))
-    locked = client.post("/api/auth/login", json={"identifier": "owner@ramdarbar.com", "password": "ramdarbar123"})
+    locked = client.post("/api/auth/login", json={"identifier": "anshmishra765487@gmail.com", "password": "ramdarbar123"})
     check("lockout blocks correct password", locked.status_code == 429, str(locked.status_code))
     from routers.auth import _failures
 
@@ -239,7 +239,7 @@ with client:
         == 200,
     )
     new_login = client.post(
-        "/api/auth/login", json={"identifier": "owner@ramdarbar.com", "password": "reset-pass-123"}
+        "/api/auth/login", json={"identifier": "anshmishra765487@gmail.com", "password": "reset-pass-123"}
     )
     check("login with new password", new_login.status_code == 200, str(new_login.status_code))
     client.post(
@@ -254,7 +254,7 @@ with client:
     check("me hides password hash", "password_hash" not in client.get("/api/auth/me", headers=headers).json())
     check(
         "login still works after /me",
-        client.post("/api/auth/login", json={"identifier": "owner@ramdarbar.com", "password": "ramdarbar123"}).status_code
+        client.post("/api/auth/login", json={"identifier": "anshmishra765487@gmail.com", "password": "ramdarbar123"}).status_code
         == 200,
     )
 
@@ -266,7 +266,7 @@ with client:
     check("change password", change.status_code == 200, str(change.status_code))
 
     client.post("/api/admin/reset", headers=headers)
-    res = client.post("/api/auth/login", json={"identifier": "owner@ramdarbar.com", "password": "ramdarbar123"})
+    res = client.post("/api/auth/login", json={"identifier": "anshmishra765487@gmail.com", "password": "ramdarbar123"})
     headers = {"Authorization": f"Bearer {res.json()['access_token']}"}
 
     truck = client.post(
@@ -438,7 +438,7 @@ with client:
     check("empty after reset", client.get("/api/health").json()["counts"]["trips"] == 0)
     check(
         "owner survives reset",
-        client.post("/api/auth/login", json={"identifier": "owner@ramdarbar.com", "password": "ramdarbar123"}).status_code
+        client.post("/api/auth/login", json={"identifier": "anshmishra765487@gmail.com", "password": "ramdarbar123"}).status_code
         == 200,
     )
 

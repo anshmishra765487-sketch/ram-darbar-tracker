@@ -27,7 +27,7 @@ load_dotenv()
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-DEFAULT_EMAIL = os.getenv("ADMIN_EMAIL", "owner@ramdarbar.com").strip().lower()
+DEFAULT_EMAIL = os.getenv("ADMIN_EMAIL", "anshmishra765487@gmail.com").strip().lower()
 
 MAX_ATTEMPTS = int(os.getenv("LOGIN_MAX_ATTEMPTS", "5"))
 LOCKOUT_SECONDS = int(os.getenv("LOGIN_LOCKOUT_SECONDS", "60"))

@@ -25,7 +25,7 @@ bearer = HTTPBearer(auto_error=False)
 
 LOCAL_OWNER = {
     "_id": "local-owner",
-    "email": os.getenv("ADMIN_EMAIL", "owner@ramdarbar.com"),
+    "email": os.getenv("ADMIN_EMAIL", "anshmishra765487@gmail.com"),
     "name": "Owner",
 }
 

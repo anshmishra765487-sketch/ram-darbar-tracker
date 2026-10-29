@@ -28,7 +28,7 @@ from routers import (
 from security import hash_password  # noqa: E402
 
 
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "owner@ramdarbar.com").strip().lower()
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "anshmishra765487@gmail.com").strip().lower()
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "ramdarbar123")
 ADMIN_PHONE = os.getenv("ADMIN_PHONE", "").strip()
 
