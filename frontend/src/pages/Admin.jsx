@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowClockwise,
+  ChartLineUp,
+  Clock,
   Database,
   DownloadSimple,
   FileText,
   Key,
-  MapPinLine,
   Plus,
   Receipt,
   ShieldCheck,
@@ -17,7 +18,7 @@ import {
   Wallet,
 } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import { api, errorMessage } from "../lib/api";
+import { api, errorMessage, downloadOwnerReport } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
 import { PageHeader, Spinner, StatCard } from "../components/PageHeader";
@@ -30,6 +31,8 @@ import { Modal } from "../components/ui/modal";
 const TABS = [
   { id: "overview", label: "Overview", icon: ShieldCheck },
   { id: "users", label: "Users", icon: Users },
+  { id: "staff", label: "Staff activity", icon: Clock },
+  { id: "report", label: "PDF report", icon: FileText },
   { id: "backup", label: "Backup & data", icon: Database },
 ];
 
@@ -39,11 +42,30 @@ const ROLE_TONE = {
   staff: "bg-ink-100 text-ink-600 ring-ink-200",
 };
 
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function monthStartISO() {
+  return `${todayISO().slice(0, 7)}-01`;
+}
+
 function shortDate(value) {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function shortStamp(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function money(value) {
+  return `Rs ${Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
 export default function Admin() {
@@ -62,6 +84,11 @@ export default function Admin() {
   const [newPassword, setNewPassword] = useState("");
   const fileRef = useRef(null);
 
+  const [from, setFrom] = useState(monthStartISO);
+  const [to, setTo] = useState(todayISO);
+  const [report, setReport] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+
   const load = useCallback(async () => {
     if (!isOwner) {
       setLoading(false);
@@ -78,9 +105,26 @@ export default function Admin() {
     }
   }, [isOwner]);
 
+  const loadReport = useCallback(async () => {
+    if (!isOwner) return;
+    setReportLoading(true);
+    try {
+      const res = await api.get(`/admin/report?from=${from}&to=${to}`);
+      setReport(res.data);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setReportLoading(false);
+    }
+  }, [isOwner, from, to]);
+
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (tab === "staff" || tab === "report") loadReport();
+  }, [tab, loadReport]);
 
   const counts = stats?.counts || {};
 
@@ -205,6 +249,22 @@ export default function Admin() {
     }
   };
 
+  const downloadPdf = async () => {
+    let data = report;
+    if (!data) {
+      try {
+        const res = await api.get(`/admin/report?from=${from}&to=${to}`);
+        data = res.data;
+        setReport(data);
+      } catch (error) {
+        toast.error(errorMessage(error));
+        return;
+      }
+    }
+    downloadOwnerReport(data);
+    toast.success("PDF report downloaded");
+  };
+
   if (!isOwner) {
     return (
       <div className="space-y-4">
@@ -225,7 +285,7 @@ export default function Admin() {
     <div className="space-y-4">
       <PageHeader
         title="Admin panel"
-        subtitle="Users, storage and backup for this device"
+        subtitle="Users, staff activity, reports and backup"
         actions={
           <Button variant="outline" size="sm" onClick={load}>
             <ArrowClockwise size={15} /> Refresh
@@ -266,8 +326,8 @@ export default function Admin() {
                   <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Offline (this device)</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-ink-500">Trip locations saved</span>
-                  <span className="font-semibold text-ink-800">{counts.locations ?? 0}</span>
+                  <span className="text-ink-500">Activity entries saved</span>
+                  <span className="font-semibold text-ink-800">{stats?.activity_total ?? 0}</span>
                 </div>
                 <p className="rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-500">
                   Data lives in the browser storage of this device. Use the Backup tab to move it to another phone or
@@ -378,12 +438,177 @@ export default function Admin() {
         </Card>
       ) : null}
 
+      {tab === "staff" ? (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader title="Date range" subtitle="Kitne din ka hisaab dekhna hai" icon={Clock} />
+            <CardBody className="flex flex-col gap-3 text-sm sm:flex-row sm:items-end">
+              <Field label="From" className="sm:w-44">
+                <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+              </Field>
+              <Field label="To" className="sm:w-44">
+                <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+              </Field>
+              <Button variant="outline" onClick={loadReport} disabled={reportLoading}>
+                <ArrowClockwise size={15} /> {reportLoading ? "Loading..." : "Load"}
+              </Button>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader title="Kaun kitna kaam kiya" subtitle="Trips, kharcha aur payment kis user ne banaya" icon={Users} />
+            {report ? (
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>User</Th>
+                    <Th>Role</Th>
+                    <Th align="right">Logins</Th>
+                    <Th align="right">Trips</Th>
+                    <Th align="right">Freight</Th>
+                    <Th align="right">Expenses</Th>
+                    <Th align="right">Received</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.staff.map((row) => (
+                    <tr key={row.id}>
+                      <Td>
+                        <span className="font-semibold text-ink-800">{row.name}</span>
+                        <span className="ml-2 font-mono text-[11px] text-ink-400">{row.phone ? `+${row.phone}` : ""}</span>
+                        {row.last_login ? (
+                          <span className="ml-2 text-[10px] text-ink-400">last {shortStamp(row.last_login)}</span>
+                        ) : null}
+                      </Td>
+                      <Td>
+                        <Badge className={ROLE_TONE[row.role] || ROLE_TONE.staff}>{row.role}</Badge>
+                      </Td>
+                      <Td align="right" className="font-semibold">{row.logins}</Td>
+                      <Td align="right" className="font-semibold">{row.trips}</Td>
+                      <Td align="right">{money(row.freight)}</Td>
+                      <Td align="right">{money(row.expenses_amount)}</Td>
+                      <Td align="right">{money(row.payments_amount)}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            ) : reportLoading ? (
+              <Spinner label="Loading activity..." />
+            ) : (
+              <EmptyState title="No activity data" hint="Load a date range to see staff work." />
+            )}
+          </Card>
+
+          {report ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Card>
+                <CardHeader title="Login history" subtitle={`${report.logins.length} logins is range me`} icon={Key} />
+                <CardBody className="max-h-80 space-y-2 overflow-y-auto text-sm">
+                  {report.logins.length ? (
+                    report.logins.map((login, index) => (
+                      <div key={`${login.at}-${index}`} className="flex items-start justify-between gap-3 border-b border-ink-100 pb-2 last:border-0">
+                        <div>
+                          <p className="font-semibold text-ink-800">{login.name}</p>
+                          <p className="text-xs text-ink-500">
+                            {login.phone ? `+${login.phone} · ` : ""}
+                            {login.role} · {login.action}
+                          </p>
+                        </div>
+                        <span className="whitespace-nowrap text-xs text-ink-400">{shortStamp(login.at)}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-ink-500">No logins in this period.</p>
+                  )}
+                </CardBody>
+              </Card>
+
+              <Card>
+                <CardHeader title="Recent actions" subtitle="Kisne kya add / edit / delete kiya" icon={FileText} />
+                <CardBody className="max-h-80 space-y-2 overflow-y-auto text-sm">
+                  {report.actions.length ? (
+                    report.actions.map((action, index) => (
+                      <div key={`${action.at}-${index}`} className="border-b border-ink-100 pb-2 last:border-0">
+                        <p className="text-ink-800">{action.summary}</p>
+                        <p className="text-xs text-ink-400">
+                          {action.name} ({action.role}) · {shortStamp(action.at)}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-ink-500">No actions in this period.</p>
+                  )}
+                </CardBody>
+              </Card>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {tab === "report" ? (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader title="Owner PDF report" subtitle="Poori report ek PDF file me download karo" icon={FileText} />
+            <CardBody className="space-y-4 text-sm text-ink-600">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <Field label="From" className="sm:w-44">
+                  <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+                </Field>
+                <Field label="To" className="sm:w-44">
+                  <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+                </Field>
+                <Button onClick={downloadPdf} disabled={reportLoading}>
+                  <DownloadSimple size={16} /> {reportLoading ? "Preparing..." : "Download PDF"}
+                </Button>
+              </div>
+
+              <div className="rounded-lg bg-ink-50 p-3 text-xs text-ink-600">
+                <p className="mb-1 font-bold text-ink-800">PDF me kya milega:</p>
+                <ul className="list-inside list-disc space-y-0.5">
+                  <li>Business summary — trips, freight, received, pending, expenses</li>
+                  <li>Staff activity — kisne kitne trip liye, kitna kharcha aur payment kiya</li>
+                  <li>Login history — kisne kab login kiya, password ya OTP</li>
+                  <li>Recent actions — kisne kya add / edit / delete kiya</li>
+                  <li>Trips, expenses aur payments ki poori list (kisne banaya)</li>
+                </ul>
+              </div>
+
+              {report ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    { label: "Trips", value: report.totals.trips },
+                    { label: "Freight", value: money(report.totals.freight) },
+                    { label: "Expenses", value: money(report.totals.expenses) },
+                    { label: "Pending", value: money(report.totals.pending) },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-lg border border-ink-200 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-ink-400">{item.label}</p>
+                      <p className="text-lg font-extrabold text-ink-800">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader title="Reports page" subtitle="Trip-wise hisaab aur bilty" icon={ChartLineUp} />
+            <CardBody className="text-sm text-ink-600">
+              <p>
+                Roz ke hisaab ke liye <span className="font-semibold text-ink-800">Reports</span> page use karo. Owner
+                PDF me staff ki poori activity aur har record ke saath “Added by” bhi aata hai.
+              </p>
+            </CardBody>
+          </Card>
+        </div>
+      ) : null}
+
       {tab === "backup" ? (
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader title="Backup" subtitle="Download a JSON copy of all data" icon={DownloadSimple} />
             <CardBody className="space-y-3 text-sm text-ink-600">
-              <p>Includes users, trucks, drivers, trips, expenses, payments and trip locations.</p>
+              <p>Includes users, trucks, drivers, trips, expenses, payments, trip locations and the activity log.</p>
               <Button onClick={exportBackup}>
                 <DownloadSimple size={16} /> Download backup
               </Button>

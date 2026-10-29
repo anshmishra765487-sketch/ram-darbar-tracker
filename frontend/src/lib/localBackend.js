@@ -5,7 +5,7 @@
 const DB_KEY = "rdt_offline_db_v1";
 const TOKEN_KEY = "rdt_token";
 const USER_KEY = "rdt_user";
-const COLLECTIONS = ["users", "trucks", "drivers", "trips", "expenses", "payments", "locations"];
+const COLLECTIONS = ["users", "trucks", "drivers", "trips", "expenses", "payments", "locations", "audit"];
 
 const OWNER = {
   _id: "local-owner",
@@ -101,6 +101,47 @@ let DB = loadDb();
 
 function persist() {
   saveDb(DB);
+}
+
+// --- audit / activity log -------------------------------------------------
+// Har login aur har data change yahan record hota hai, taaki owner ko pata rahe
+// kis staff ne kab kya kiya.
+
+const AUDIT_LIMIT = 3000;
+
+function actorOf(user) {
+  if (!user) return { user_id: null, user_name: "System", user_phone: "", role: "system" };
+  return {
+    user_id: user._id || null,
+    user_name: user.name || user.email || "Owner",
+    user_phone: user.phone || "",
+    role: user.role || "user",
+  };
+}
+
+function logEvent({ type = "action", action = "", entity = null, entity_id = null, summary = "", actor } = {}) {
+  const who = actorOf(actor || currentUserRecord());
+  const entry = { _id: uid(), at: nowIso(), type, action, entity, entity_id, summary, ...who };
+  DB.audit.push(entry);
+  if (DB.audit.length > AUDIT_LIMIT) DB.audit.splice(0, DB.audit.length - AUDIT_LIMIT);
+  persist();
+  return entry;
+}
+
+function stampCreate(doc) {
+  const who = actorOf(currentUserRecord());
+  return {
+    ...doc,
+    created_by: who.user_id,
+    created_by_name: who.user_name,
+    created_by_phone: who.user_phone,
+    created_by_role: who.role,
+  };
+}
+
+function stampUpdate(patch) {
+  const who = actorOf(currentUserRecord());
+  return { ...patch, updated_by: who.user_id, updated_by_name: who.user_name, updated_at: nowIso() };
 }
 
 // --- generic collection ops ----------------------------------------------
@@ -297,7 +338,30 @@ function authLogin(body) {
   if (!user || user.password_hash !== String(body.password)) {
     throw httpError(401, "Wrong mobile number or password");
   }
+  logEvent({
+    type: "login",
+    action: "auth.login",
+    entity: "user",
+    entity_id: user._id,
+    summary: `${user.name || user.phone} logged in`,
+    actor: user,
+  });
   return sessionFor(user);
+}
+
+function authLogout() {
+  const me = currentUserRecord();
+  if (me) {
+    logEvent({
+      type: "logout",
+      action: "auth.logout",
+      entity: "user",
+      entity_id: me._id,
+      summary: `${me.name || me.phone} logged out`,
+      actor: me,
+    });
+  }
+  return { ok: true };
 }
 
 function authSignup(body) {
@@ -321,7 +385,16 @@ function authSignup(body) {
     role: "user",
     created_at: nowIso(),
   });
-  return sessionFor({ _id: id, email, name, phone });
+  const created = { _id: id, email, name, phone, role: "user" };
+  logEvent({
+    type: "signup",
+    action: "auth.signup",
+    entity: "user",
+    entity_id: id,
+    summary: `${name || phone} created an account`,
+    actor: created,
+  });
+  return sessionFor(created);
 }
 
 function authOtpRequest(body) {
@@ -362,6 +435,14 @@ function authOtpVerify(body) {
   const user = findUser(String(body.identifier || "").trim());
   if (!user) throw httpError(404, "No account found for this mobile number");
   checkOtp(user._id, body.code);
+  logEvent({
+    type: "login",
+    action: "auth.login_otp",
+    entity: "user",
+    entity_id: user._id,
+    summary: `${user.name || user.phone} logged in with OTP`,
+    actor: user,
+  });
   return sessionFor(user);
 }
 
@@ -371,6 +452,7 @@ function authPasswordReset(body) {
   if (!user) throw httpError(404, "No account found for this mobile number");
   checkOtp(user._id, body.code);
   updateOne("users", user._id, { password_hash: String(body.new_password) });
+  logEvent({ type: "auth", action: "auth.password_reset", entity: "user", entity_id: user._id, summary: "Password reset with OTP", actor: user });
   return { ok: true };
 }
 
@@ -390,6 +472,7 @@ function authChangePassword(body) {
   if (me.password_hash !== String(body.old_password)) throw httpError(401, "Current password is wrong");
   if (String(body.new_password || "").length < 6) throw httpError(400, "New password must be at least 6 characters");
   updateOne("users", me._id, { password_hash: String(body.new_password) });
+  logEvent({ type: "auth", action: "auth.change_password", entity: "user", entity_id: me._id, summary: "Changed own password", actor: me });
   return { ok: true };
 }
 
@@ -405,8 +488,9 @@ function createTruck(body) {
   const capacity_tons = Number(body.capacity_tons);
   if (!registration_no || !model || !capacity_tons) throw httpError(400, "Registration, model and capacity are required");
   if (findOne("trucks", { registration_no })) throw httpError(409, "This registration number already exists");
-  const data = { registration_no, model, capacity_tons, status: body.status || "Available", created_at: nowIso() };
+  const data = stampCreate({ registration_no, model, capacity_tons, status: body.status || "Available", created_at: nowIso() });
   const _id = insertOne("trucks", data);
+  logEvent({ type: "create", action: "truck.created", entity: "truck", entity_id: _id, summary: `Truck ${registration_no} (${model}) added` });
   return { _id, ...data };
 }
 
@@ -420,13 +504,28 @@ function updateTruck(id, body) {
     if (clash && clash._id !== id) throw httpError(409, "This registration number already exists");
   }
   if (patch.capacity_tons !== undefined) patch.capacity_tons = Number(patch.capacity_tons);
-  updateOne("trucks", id, patch);
+  updateOne("trucks", id, stampUpdate(patch));
+  logEvent({
+    type: "update",
+    action: "truck.updated",
+    entity: "truck",
+    entity_id: id,
+    summary: `Truck ${patch.registration_no || current.registration_no} updated`,
+  });
   return findOne("trucks", { _id: id });
 }
 
 function deleteTruck(id) {
   if (findMany("trips", { truck_id: id }).length) throw httpError(409, "This truck has trips, delete those trips first");
+  const current = findOne("trucks", { _id: id });
   if (!deleteOne("trucks", id)) throw httpError(404, "Truck not found");
+  logEvent({
+    type: "delete",
+    action: "truck.deleted",
+    entity: "truck",
+    entity_id: id,
+    summary: `Truck ${current?.registration_no || id} deleted`,
+  });
   return { deleted: true };
 }
 
@@ -446,23 +545,28 @@ function createDriver(body) {
     created_at: nowIso(),
   };
   if (!data.name || !data.phone || !data.license_no) throw httpError(400, "Name, phone and license are required");
-  const _id = insertOne("drivers", data);
+  const _id = insertOne("drivers", stampCreate(data));
+  logEvent({ type: "create", action: "driver.created", entity: "driver", entity_id: _id, summary: `Driver ${data.name} added` });
   return { _id, ...data };
 }
 
 function updateDriver(id, body) {
-  if (!findOne("drivers", { _id: id })) throw httpError(404, "Driver not found");
+  const current = findOne("drivers", { _id: id });
+  if (!current) throw httpError(404, "Driver not found");
   const patch = { ...body };
   if (patch.license_no !== undefined) patch.license_no = String(patch.license_no).trim().toUpperCase();
   if (patch.salary !== undefined) patch.salary = Number(patch.salary || 0);
   if (patch.advance !== undefined) patch.advance = Number(patch.advance || 0);
-  updateOne("drivers", id, patch);
+  updateOne("drivers", id, stampUpdate(patch));
+  logEvent({ type: "update", action: "driver.updated", entity: "driver", entity_id: id, summary: `Driver ${patch.name || current.name} updated` });
   return findOne("drivers", { _id: id });
 }
 
 function deleteDriver(id) {
   if (findMany("trips", { driver_id: id }).length) throw httpError(409, "This driver has trips, delete those trips first");
+  const current = findOne("drivers", { _id: id });
   if (!deleteOne("drivers", id)) throw httpError(404, "Driver not found");
+  logEvent({ type: "delete", action: "driver.deleted", entity: "driver", entity_id: id, summary: `Driver ${current?.name || id} deleted` });
   return { deleted: true };
 }
 
@@ -508,8 +612,15 @@ function createTrip(body) {
   data.driver_pay = Number(data.driver_pay || 0);
   data.created_at = nowIso();
   checkLoad(data.truck_id, data.load_tons);
-  const _id = insertOne("trips", data);
+  const _id = insertOne("trips", stampCreate(data));
   if (data.truck_id) updateOne("trucks", data.truck_id, { status: "On-Trip" });
+  logEvent({
+    type: "create",
+    action: "trip.created",
+    entity: "trip",
+    entity_id: _id,
+    summary: `Trip ${data.party_name || ""} ${data.from_location || ""} to ${data.to_location || ""} (Rs ${data.freight_amount || data.sale_amount || 0})`.replace(/\s+/g, " ").trim(),
+  });
   return addTripFinancials([{ _id, ...data }], findMany("expenses"), findMany("payments"))[0];
 }
 
@@ -526,7 +637,7 @@ function updateTrip(id, body) {
   if (patch.extra_expense !== undefined) patch.extra_expense = Number(patch.extra_expense || 0);
   if (patch.driver_pay !== undefined) patch.driver_pay = Number(patch.driver_pay || 0);
   checkLoad(patch.truck_id || current.truck_id, Number(patch.load_tons !== undefined ? patch.load_tons : current.load_tons || 0));
-  updateOne("trips", id, patch);
+  updateOne("trips", id, stampUpdate(patch));
 
   const newStatus = patch.status;
   if (["Delivered", "Paid", "Cancelled"].includes(newStatus) && current.truck_id) {
@@ -534,6 +645,13 @@ function updateTrip(id, body) {
   } else if (newStatus === "In-Transit" && current.truck_id) {
     updateOne("trucks", current.truck_id, { status: "On-Trip" });
   }
+  logEvent({
+    type: "update",
+    action: "trip.updated",
+    entity: "trip",
+    entity_id: id,
+    summary: `Trip ${patch.party_name || current.party_name || ""} updated${newStatus ? ` -> ${newStatus}` : ""}`.replace(/\s+/g, " ").trim(),
+  });
   const updated = findOne("trips", { _id: id });
   return addTripFinancials([updated], findMany("expenses"), findMany("payments"))[0];
 }
@@ -546,6 +664,13 @@ function deleteTrip(id) {
   findMany("locations", { trip_id: id }).forEach((l) => deleteOne("locations", l._id));
   deleteOne("trips", id);
   if (trip.truck_id) updateOne("trucks", trip.truck_id, { status: "Available" });
+  logEvent({
+    type: "delete",
+    action: "trip.deleted",
+    entity: "trip",
+    entity_id: id,
+    summary: `Trip ${trip.party_name || ""} ${trip.from_location || ""} to ${trip.to_location || ""} deleted`.replace(/\s+/g, " ").trim(),
+  });
   return { deleted: true };
 }
 
@@ -594,22 +719,45 @@ function listExpenses(query) {
 }
 
 function createExpense(body) {
-  const data = { ...body, amount: Number(body.amount), date: String(body.date || nowIso().slice(0, 10)), created_at: nowIso() };
+  const data = stampCreate({ ...body, amount: Number(body.amount), date: String(body.date || nowIso().slice(0, 10)), created_at: nowIso() });
   const _id = insertOne("expenses", data);
+  logEvent({
+    type: "create",
+    action: "expense.created",
+    entity: "expense",
+    entity_id: _id,
+    summary: `Expense ${data.category || "general"} Rs ${data.amount || 0}`,
+  });
   return { _id, ...data };
 }
 
 function updateExpense(id, body) {
-  if (!findOne("expenses", { _id: id })) throw httpError(404, "Expense not found");
+  const current = findOne("expenses", { _id: id });
+  if (!current) throw httpError(404, "Expense not found");
   const patch = { ...body };
   if (patch.amount !== undefined) patch.amount = Number(patch.amount);
   if (patch.date !== undefined && patch.date !== null) patch.date = String(patch.date);
-  updateOne("expenses", id, patch);
+  updateOne("expenses", id, stampUpdate(patch));
+  logEvent({
+    type: "update",
+    action: "expense.updated",
+    entity: "expense",
+    entity_id: id,
+    summary: `Expense ${patch.category || current.category || "general"} updated (Rs ${patch.amount ?? current.amount ?? 0})`,
+  });
   return findOne("expenses", { _id: id });
 }
 
 function deleteExpense(id) {
+  const current = findOne("expenses", { _id: id });
   if (!deleteOne("expenses", id)) throw httpError(404, "Expense not found");
+  logEvent({
+    type: "delete",
+    action: "expense.deleted",
+    entity: "expense",
+    entity_id: id,
+    summary: `Expense ${current?.category || "general"} Rs ${current?.amount || 0} deleted`,
+  });
   return { deleted: true };
 }
 
@@ -640,8 +788,15 @@ function createPayment(body) {
     note: body.note || "",
     created_at: nowIso(),
   };
-  const _id = insertOne("payments", data);
+  const _id = insertOne("payments", stampCreate(data));
   const completed = markPaidIfComplete(body.trip_id);
+  logEvent({
+    type: "create",
+    action: "payment.created",
+    entity: "payment",
+    entity_id: _id,
+    summary: `Payment received from ${data.party_name || "party"} Rs ${data.amount}`,
+  });
   return { _id, ...data, trip_status: completed ? "Paid" : trip.status || "", trip_completed: completed };
 }
 
@@ -651,8 +806,15 @@ function updatePayment(id, body) {
   const patch = { ...body };
   if (patch.amount !== undefined) patch.amount = Number(patch.amount);
   if (patch.date !== undefined && patch.date !== null) patch.date = String(patch.date);
-  updateOne("payments", id, patch);
+  updateOne("payments", id, stampUpdate(patch));
   markPaidIfComplete(existing.trip_id);
+  logEvent({
+    type: "update",
+    action: "payment.updated",
+    entity: "payment",
+    entity_id: id,
+    summary: `Payment ${existing.party_name || ""} updated (Rs ${patch.amount ?? existing.amount ?? 0})`.replace(/\s+/g, " ").trim(),
+  });
   return findOne("payments", { _id: id });
 }
 
@@ -660,6 +822,13 @@ function deletePayment(id) {
   const existing = findOne("payments", { _id: id });
   if (!deleteOne("payments", id)) throw httpError(404, "Payment not found");
   if (existing) markPaidIfComplete(existing.trip_id);
+  logEvent({
+    type: "delete",
+    action: "payment.deleted",
+    entity: "payment",
+    entity_id: id,
+    summary: `Payment ${existing?.party_name || ""} Rs ${existing?.amount || 0} deleted`.replace(/\s+/g, " ").trim(),
+  });
   return { deleted: true };
 }
 
@@ -703,8 +872,15 @@ function scanPayment(tripId, body) {
     source: body.source || "scanner",
     created_at: nowIso(),
   };
-  const payment_id = insertOne("payments", record);
+  const payment_id = insertOne("payments", stampCreate(record));
   const completed = markPaidIfComplete(tripId);
+  logEvent({
+    type: "create",
+    action: "payment.scanned",
+    entity: "payment",
+    entity_id: payment_id,
+    summary: `Scanned payment ${record.party_name || ""} Rs ${record.amount}`.replace(/\s+/g, " ").trim(),
+  });
   const updated = tripFinancials(tripId);
   const alreadyPaid = updated.status === "Paid";
   let message;
@@ -1122,6 +1298,7 @@ function adminReset() {
     DB[collection] = [];
   }
   persist();
+  logEvent({ type: "admin", action: "data.cleared", entity: "business", summary: "All business data cleared by owner" });
   return { cleared };
 }
 
@@ -1154,6 +1331,7 @@ function adminStats() {
       locations: DB.locations.length,
     },
     roles,
+    activity_total: DB.audit.length,
     current_user: publicUser(me),
   };
 }
@@ -1196,6 +1374,13 @@ function adminCreateUser(body) {
     role,
     created_at: nowIso(),
   });
+  logEvent({
+    type: "admin",
+    action: "user.created",
+    entity: "user",
+    entity_id: id,
+    summary: `${name} added as ${role}`,
+  });
   return { id, email, name, phone, role, created_at: nowIso() };
 }
 
@@ -1222,6 +1407,17 @@ function adminUpdateUser(id, body) {
   if (!Object.keys(patch).length) throw httpError(400, "Nothing to update");
 
   updateOne("users", id, patch);
+  const parts = [];
+  if (patch.role) parts.push(`role -> ${patch.role}`);
+  if (patch.password_hash) parts.push("password reset");
+  if (patch.name) parts.push(`name -> ${patch.name}`);
+  logEvent({
+    type: "admin",
+    action: "user.updated",
+    entity: "user",
+    entity_id: id,
+    summary: `${user.name || user.phone}: ${parts.join(", ")}`,
+  });
   return { ok: true };
 }
 
@@ -1233,6 +1429,13 @@ function adminDeleteUser(id) {
   if (user.role === "owner") throw httpError(400, "The owner account cannot be deleted");
   DB.users = DB.users.filter((row) => row._id !== id);
   persist();
+  logEvent({
+    type: "delete",
+    action: "user.deleted",
+    entity: "user",
+    entity_id: id,
+    summary: `${user.name || user.phone} account deleted`,
+  });
   return { deleted: true };
 }
 
@@ -1246,13 +1449,235 @@ function adminImport(body) {
   const incoming = body && body.db;
   if (!incoming || typeof incoming !== "object") throw httpError(400, "Invalid backup file");
   setDatabase(incoming);
+  logEvent({ type: "admin", action: "data.restored", entity: "business", summary: "Backup restored by owner" });
   return { ok: true, counts: Object.fromEntries(COLLECTIONS.map((name) => [name, DB[name].length])) };
+}
+
+// Owner ko dikhta hai: har user ne kitna kaam kiya + poora activity log.
+function adminActivity(query) {
+  requireOwner();
+  const limit = Math.min(Number(query.get("limit")) || 250, 1000);
+  return {
+    total: DB.audit.length,
+    entries: DB.audit.slice(-limit).reverse(),
+    logins: DB.audit.filter((entry) => entry.type === "login").slice(-300).reverse(),
+  };
+}
+
+function reportRange(query) {
+  const today = nowIso().slice(0, 10);
+  const first = `${today.slice(0, 7)}-01`;
+  const from = String(query.get("from") || first).slice(0, 10);
+  const to = String(query.get("to") || today).slice(0, 10);
+  return from <= to ? { from, to } : { from: to, to: from };
+}
+
+function inDayRange(value, range) {
+  const day = String(value || "").slice(0, 10);
+  return Boolean(day) && day >= range.from && day <= range.to;
+}
+
+function adminReport(query) {
+  const me = requireOwner();
+  const range = reportRange(query);
+
+  const truckById = Object.fromEntries(DB.trucks.map((truck) => [truck._id, truck]));
+  const driverById = Object.fromEntries(DB.drivers.map((driver) => [driver._id, driver]));
+
+  const rows = DB.users.map((user) => ({
+    id: user._id,
+    name: user.name || user.email || "User",
+    phone: user.phone || "",
+    role: ADMIN_ROLES.includes(user.role) ? user.role : "staff",
+    logins: 0,
+    last_login: null,
+    trips: 0,
+    freight: 0,
+    expenses_count: 0,
+    expenses_amount: 0,
+    payments_count: 0,
+    payments_amount: 0,
+    actions: 0,
+    pending: 0,
+  }));
+  const byId = Object.fromEntries(rows.map((row) => [row.id, row]));
+  const legacy = {
+    id: "__untracked",
+    name: "Purana data (before tracking)",
+    phone: "",
+    role: "-",
+    logins: 0,
+    last_login: null,
+    trips: 0,
+    freight: 0,
+    expenses_count: 0,
+    expenses_amount: 0,
+    payments_count: 0,
+    payments_amount: 0,
+    actions: 0,
+    pending: 0,
+  };
+  let legacyUsed = false;
+  const bucketFor = (id) => {
+    if (id && byId[id]) return byId[id];
+    legacyUsed = true;
+    return legacy;
+  };
+
+  const expensesByTrip = {};
+  const receivedByTrip = {};
+  for (const expense of DB.expenses) {
+    if (expense.trip_id) expensesByTrip[expense.trip_id] = (expensesByTrip[expense.trip_id] || 0) + Number(expense.amount || 0);
+  }
+  for (const payment of DB.payments) {
+    if (payment.trip_id) receivedByTrip[payment.trip_id] = (receivedByTrip[payment.trip_id] || 0) + Number(payment.amount || 0);
+  }
+
+  const trips = DB.trips
+    .filter((trip) => inDayRange(trip.date || trip.created_at, range))
+    .map((trip) => {
+      const income = Number(trip.freight_amount || 0) || Number(trip.sale_amount || 0);
+      const received = Number(trip.advance || 0) + (receivedByTrip[trip._id] || 0);
+      const pending = Math.max(income - received, 0);
+      const row = bucketFor(trip.created_by);
+      row.trips += 1;
+      row.freight += income;
+      row.pending += pending;
+      return {
+        id: trip._id,
+        date: String(trip.date || ""),
+        party: trip.party_name || "",
+        from: trip.from_location || "",
+        to: trip.to_location || "",
+        truck_no: truckById[trip.truck_id]?.registration_no || "",
+        driver_name: driverById[trip.driver_id]?.name || "",
+        freight: round2(income),
+        received: round2(received),
+        pending: round2(pending),
+        status: trip.status || "Pending",
+        created_by: trip.created_by_name || "Purana data",
+      };
+    })
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+  const expenses = DB.expenses
+    .filter((expense) => inDayRange(expense.date || expense.created_at, range))
+    .map((expense) => {
+      const row = bucketFor(expense.created_by);
+      row.expenses_count += 1;
+      row.expenses_amount += Number(expense.amount || 0);
+      const trip = expense.trip_id ? DB.trips.find((item) => item._id === expense.trip_id) : null;
+      return {
+        id: expense._id,
+        date: String(expense.date || ""),
+        category: expense.category || "Other",
+        amount: round2(Number(expense.amount || 0)),
+        note: expense.note || "",
+        party: trip?.party_name || "",
+        created_by: expense.created_by_name || "Purana data",
+      };
+    })
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+  const payments = DB.payments
+    .filter((payment) => inDayRange(payment.date || payment.created_at, range))
+    .map((payment) => {
+      const row = bucketFor(payment.created_by);
+      row.payments_count += 1;
+      row.payments_amount += Number(payment.amount || 0);
+      return {
+        id: payment._id,
+        date: String(payment.date || ""),
+        party: payment.party_name || "",
+        amount: round2(Number(payment.amount || 0)),
+        mode: payment.mode || "Cash",
+        created_by: payment.created_by_name || "Purana data",
+      };
+    })
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+  const logins = DB.audit
+    .filter((entry) => entry.type === "login" && inDayRange(entry.at, range))
+    .map((entry) => {
+      const row = byId[entry.user_id];
+      if (row) {
+        row.logins += 1;
+        if (!row.last_login || entry.at > row.last_login) row.last_login = entry.at;
+      }
+      return {
+        at: entry.at,
+        name: entry.user_name || "",
+        phone: entry.user_phone || "",
+        role: entry.role || "",
+        action: entry.action === "auth.login_otp" ? "OTP" : "Password",
+      };
+    })
+    .reverse();
+
+  // "Last login" range ke bahar bhi dikhna chahiye.
+  for (const entry of DB.audit) {
+    if (entry.type !== "login") continue;
+    const row = byId[entry.user_id];
+    if (row && (!row.last_login || entry.at > row.last_login)) row.last_login = entry.at;
+  }
+
+  const actions = DB.audit
+    .filter((entry) => !["login", "logout"].includes(entry.type) && inDayRange(entry.at, range))
+    .slice(-300)
+    .reverse()
+    .map((entry) => {
+      const row = byId[entry.user_id];
+      if (row) row.actions += 1;
+      return {
+        at: entry.at,
+        name: entry.user_name || "",
+        role: entry.role || "",
+        type: entry.type,
+        summary: entry.summary || entry.action || "",
+      };
+    });
+
+  const staff = rows.concat(legacyUsed ? [legacy] : []).map((row) => ({
+    ...row,
+    freight: round2(row.freight),
+    expenses_amount: round2(row.expenses_amount),
+    payments_amount: round2(row.payments_amount),
+    pending: round2(row.pending),
+  }));
+
+  const totalFreight = trips.reduce((sum, trip) => sum + trip.freight, 0);
+  const totalReceived = trips.reduce((sum, trip) => sum + trip.received, 0);
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0);
+
+  return {
+    generated_at: nowIso(),
+    range,
+    owner: { name: me.name || "Owner", phone: me.phone || "" },
+    staff,
+    logins,
+    actions,
+    trips,
+    expenses,
+    payments,
+    totals: {
+      users: rows.length,
+      trips: trips.length,
+      logins: logins.length,
+      freight: round2(totalFreight),
+      received: round2(totalReceived),
+      pending: round2(Math.max(totalFreight - totalReceived, 0)),
+      expenses: round2(totalExpenses),
+      payments: round2(totalPayments),
+    },
+  };
 }
 
 // --- router ---------------------------------------------------------------
 
 const ROUTES = [
   ["POST", /^\/auth\/login$/, (m, body) => authLogin(body)],
+  ["POST", /^\/auth\/logout$/, () => authLogout()],
   ["POST", /^\/auth\/signup$/, (m, body) => authSignup(body)],
   ["POST", /^\/auth\/otp\/request$/, (m, body) => authOtpRequest(body)],
   ["POST", /^\/auth\/otp\/verify$/, (m, body) => authOtpVerify(body)],
@@ -1311,6 +1736,8 @@ const ROUTES = [
   ["DELETE", /^\/admin\/users\/([^/]+)$/, (m) => adminDeleteUser(m[1])],
   ["GET", /^\/admin\/export$/, () => adminExport()],
   ["POST", /^\/admin\/import$/, (m, body) => adminImport(body)],
+  ["GET", /^\/admin\/activity$/, (m, body, query) => adminActivity(query)],
+  ["GET", /^\/admin\/report$/, (m, body, query) => adminReport(query)],
   ["GET", /^\/owner$/, () => ({ email: OWNER.email, name: "Owner", auth_required: true })],
   ["GET", /^\/health$/, () => ({
     status: "ok",

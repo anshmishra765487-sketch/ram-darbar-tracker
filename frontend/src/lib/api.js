@@ -162,3 +162,264 @@ export async function downloadBilty(tripId, partyName) {
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+// --- Owner report PDF (multi-page) ---------------------------------------
+
+const PAGE_WIDTH = 595;
+const PAGE_HEIGHT = 842;
+const PAGE_LEFT = 36;
+const PAGE_TOP = 806;
+const PAGE_BOTTOM = 46;
+
+function clip(value, width) {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (text.length <= width) return text;
+  return `${text.slice(0, Math.max(width - 3, 0))}...`;
+}
+
+function cell(value, width, align = "left") {
+  const text = clip(value, width);
+  return align === "right" ? text.padStart(width) : text.padEnd(width);
+}
+
+function tableRow(values, widths, aligns = []) {
+  return values.map((value, index) => cell(value, widths[index], aligns[index] || "left")).join(" ");
+}
+
+function tableLine(widths) {
+  return widths.map((width) => "-".repeat(width)).join(" ");
+}
+
+function dayText(value) {
+  const raw = String(value || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw || "-";
+  const [year, month, day] = raw.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function stampText(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function inr(value) {
+  return `Rs ${Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+function buildReportPdf(pages, footer) {
+  const fontObjects = [
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >>",
+  ];
+
+  const pageStreams = pages.map((page, index) => {
+    const parts = ["BT"];
+    for (const line of page) {
+      const font = line.monoBold ? "F4" : line.mono ? "F3" : line.bold ? "F2" : "F1";
+      const size = line.size || 10;
+      parts.push(`/${font} ${size} Tf`);
+      parts.push(`1 0 0 1 ${PAGE_LEFT} ${line.y} Tm`);
+      parts.push(`(${PDF_HELPER.escape(PDF_HELPER.ascii(line.text))}) Tj`);
+    }
+    parts.push("/F1 8 Tf");
+    parts.push(`1 0 0 1 ${PAGE_LEFT} 26 Tm`);
+    parts.push(`(${PDF_HELPER.escape(PDF_HELPER.ascii(`${footer.line} - Page ${index + 1} of ${pages.length}`))}) Tj`);
+    parts.push("ET");
+    return parts.join("\n");
+  });
+
+  const totalObjects = 6 + pages.length * 2;
+  const objects = new Array(totalObjects + 1);
+  const kids = pages.map((_, index) => `${7 + index * 2} 0 R`).join(" ");
+
+  objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  objects[2] = `<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`;
+  objects[3] = fontObjects[0];
+  objects[4] = fontObjects[1];
+  objects[5] = fontObjects[2];
+  objects[6] = fontObjects[3];
+
+  pageStreams.forEach((stream, index) => {
+    const pageObj = 7 + index * 2;
+    const contentObj = pageObj + 1;
+    objects[pageObj] =
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R >> >> /Contents ${contentObj} 0 R >>`;
+    objects[contentObj] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+  });
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [];
+  for (let index = 1; index <= totalObjects; index += 1) {
+    offsets.push(pdf.length);
+    pdf += `${index} 0 obj\n${objects[index]}\nendobj\n`;
+  }
+  const xrefStart = pdf.length;
+  pdf += `xref\n0 ${totalObjects + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets) pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${totalObjects + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+  return pdf;
+}
+
+export function buildOwnerReportPdf(report) {
+  const lines = [];
+  const add = (text = "", options = {}) => {
+    lines.push({
+      text,
+      size: options.size || 10,
+      bold: Boolean(options.bold),
+      mono: Boolean(options.mono),
+      monoBold: Boolean(options.monoBold),
+      gap: options.gap,
+      pageBreak: Boolean(options.pageBreak),
+    });
+  };
+  const blank = (gap = 6) => add("", { size: 1, gap });
+  const section = (title) => {
+    blank(6);
+    add(title, { size: 12, bold: true });
+  };
+
+  add("RAM DARBAR TRACKER", { size: 18, bold: true });
+  add("Owner Report - Staff Activity & Business Data", { size: 11 });
+  add(`Period: ${dayText(report.range.from)} to ${dayText(report.range.to)}`, { size: 10 });
+  add(`Generated: ${stampText(report.generated_at)}`, { size: 9 });
+  add(`Owner: ${report.owner.name || "Owner"}${report.owner.phone ? ` (+91 ${report.owner.phone})` : ""}`, { size: 9 });
+
+  section("BUSINESS SUMMARY");
+  add(`Trips booked          : ${report.totals.trips}`, { size: 10, mono: true });
+  add(`Freight booked        : ${inr(report.totals.freight)}`, { size: 10, mono: true });
+  add(`Payments received     : ${inr(report.totals.received)}`, { size: 10, mono: true });
+  add(`Pending from parties  : ${inr(report.totals.pending)}`, { size: 10, mono: true });
+  add(`Expenses recorded     : ${inr(report.totals.expenses)}`, { size: 10, mono: true });
+  add(`Logins in this period : ${report.totals.logins}`, { size: 10, mono: true });
+
+  section("STAFF ACTIVITY");
+  const staffWidths = [22, 7, 7, 6, 15, 13, 15, 9];
+  add(tableRow(["Name", "Role", "Logins", "Trips", "Freight", "Expense", "Received", "Actions"], staffWidths, ["left", "left", "right", "right", "right", "right", "right", "right"]), { size: 8.5, monoBold: true });
+  add(tableLine(staffWidths), { size: 8.5, mono: true });
+  for (const row of report.staff) {
+    add(
+      tableRow(
+        [row.name, row.role, row.logins, row.trips, inr(row.freight), inr(row.expenses_amount), inr(row.payments_amount), row.actions],
+        staffWidths,
+        ["left", "left", "right", "right", "right", "right", "right", "right"],
+      ),
+      { size: 8.5, mono: true },
+    );
+  }
+
+  section("LOGIN HISTORY");
+  if (report.logins.length) {
+    const loginWidths = [20, 22, 15, 8, 9];
+    add(tableRow(["Time", "Name", "Mobile", "Role", "Method"], loginWidths), { size: 8.5, monoBold: true });
+    add(tableLine(loginWidths), { size: 8.5, mono: true });
+    for (const login of report.logins) {
+      add(tableRow([stampText(login.at), login.name, login.phone ? `+${login.phone}` : "-", login.role, login.action], loginWidths), { size: 8.5, mono: true });
+    }
+  } else {
+    add("No logins recorded in this period.", { size: 9 });
+  }
+
+  section("RECENT ACTIONS (WHO DID WHAT)");
+  if (report.actions.length) {
+    for (const action of report.actions) {
+      add(`${stampText(action.at)}  ${clip(action.name, 18)} (${clip(action.role, 7)})  ${clip(action.summary, 70)}`, { size: 8 });
+    }
+  } else {
+    add("No actions recorded in this period.", { size: 9 });
+  }
+
+  section(`TRIPS (${report.trips.length})`);
+  if (report.trips.length) {
+    const tripWidths = [11, 18, 23, 11, 10, 10, 14];
+    add(tableRow(["Date", "Party", "From - To", "Freight", "Pending", "Status", "Added by"], tripWidths, ["left", "left", "left", "right", "right", "left", "left"]), { size: 7.5, monoBold: true });
+    add(tableLine(tripWidths), { size: 7.5, mono: true });
+    for (const trip of report.trips) {
+      add(
+        tableRow(
+          [dayText(trip.date), trip.party, `${trip.from} - ${trip.to}`, inr(trip.freight), inr(trip.pending), trip.status, trip.created_by],
+          tripWidths,
+          ["left", "left", "left", "right", "right", "left", "left"],
+        ),
+        { size: 7.5, mono: true },
+      );
+    }
+  } else {
+    add("No trips in this period.", { size: 9 });
+  }
+
+  section(`EXPENSES (${report.expenses.length})`);
+  if (report.expenses.length) {
+    const expenseWidths = [11, 14, 11, 28, 14, 14];
+    add(tableRow(["Date", "Category", "Amount", "Note", "Party", "Added by"], expenseWidths, ["left", "left", "right", "left", "left", "left"]), { size: 7.5, monoBold: true });
+    add(tableLine(expenseWidths), { size: 7.5, mono: true });
+    for (const expense of report.expenses) {
+      add(
+        tableRow([dayText(expense.date), expense.category, inr(expense.amount), expense.note, expense.party, expense.created_by], expenseWidths, ["left", "left", "right", "left", "left", "left"]),
+        { size: 7.5, mono: true },
+      );
+    }
+  } else {
+    add("No expenses in this period.", { size: 9 });
+  }
+
+  section(`PAYMENTS RECEIVED (${report.payments.length})`);
+  if (report.payments.length) {
+    const paymentWidths = [11, 24, 12, 9, 16];
+    add(tableRow(["Date", "Party", "Amount", "Mode", "Added by"], paymentWidths, ["left", "left", "right", "left", "left"]), { size: 7.5, monoBold: true });
+    add(tableLine(paymentWidths), { size: 7.5, mono: true });
+    for (const payment of report.payments) {
+      add(tableRow([dayText(payment.date), payment.party, inr(payment.amount), payment.mode, payment.created_by], paymentWidths, ["left", "left", "right", "left", "left"]), { size: 7.5, mono: true });
+    }
+  } else {
+    add("No payments in this period.", { size: 9 });
+  }
+
+  blank(8);
+  add("Note: data is saved in this device's browser storage. Take a backup regularly from Admin > Backup & data.", { size: 8 });
+  add("Ram Darbar Tracker - offline transport accounting", { size: 8 });
+
+  // Automatic pagination.
+  const pages = [];
+  let page = [];
+  let y = PAGE_TOP;
+  for (const line of lines) {
+    const height = line.gap || (line.size + 4);
+    if (line.pageBreak || (page.length && y - height < PAGE_BOTTOM)) {
+      pages.push(page);
+      page = [];
+      y = PAGE_TOP;
+    }
+    y -= height;
+    page.push({ ...line, y });
+  }
+  if (page.length) pages.push(page);
+
+  return buildReportPdf(pages, {
+    line: `Ram Darbar Tracker - ${report.range.from} to ${report.range.to}`,
+  });
+}
+
+export function downloadOwnerReport(report) {
+  const pdf = buildOwnerReportPdf(report);
+  const blob = new Blob([pdf], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `ram-darbar-owner-report-${report.range.from}-to-${report.range.to}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}

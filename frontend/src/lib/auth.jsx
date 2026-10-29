@@ -110,7 +110,10 @@ export function AuthProvider({ children }) {
     return res.data;
   }, []);
 
-  const logout = useCallback(() => logoutLocal(), [logoutLocal]);
+  const logout = useCallback(() => {
+    api.post("/auth/logout").catch(() => {});
+    logoutLocal();
+  }, [logoutLocal]);
 
   const value = useMemo(
     () => ({
