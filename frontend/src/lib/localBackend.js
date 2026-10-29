@@ -9,9 +9,9 @@ const COLLECTIONS = ["users", "trucks", "drivers", "trips", "expenses", "payment
 
 const OWNER = {
   _id: "local-owner",
-  email: "owner@ramdarbar.com",
-  name: "Owner",
-  phone: "9999999999",
+  email: "anshmishra765487@gmail.com",
+  name: "Ansh Mishra",
+  phone: "7393036702",
   password_hash: "ramdarbar123",
   role: "owner",
 };
@@ -1738,7 +1738,7 @@ const ROUTES = [
   ["POST", /^\/admin\/import$/, (m, body) => adminImport(body)],
   ["GET", /^\/admin\/activity$/, (m, body, query) => adminActivity(query)],
   ["GET", /^\/admin\/report$/, (m, body, query) => adminReport(query)],
-  ["GET", /^\/owner$/, () => ({ email: OWNER.email, name: "Owner", auth_required: true })],
+  ["GET", /^\/owner$/, () => ({ email: OWNER.email, name: OWNER.name, auth_required: true })],
   ["GET", /^\/health$/, () => ({
     status: "ok",
     storage: "offline",
