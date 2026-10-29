@@ -17,7 +17,7 @@ import {
 } from "@phosphor-icons/react";
 import { Toaster, toast } from "sonner";
 import { cn } from "../lib/utils";
-import { useI18n } from "../lib/i18n";
+import { useI18n, LANGUAGES } from "../lib/i18n";
 import { useAuth } from "../lib/auth";
 
 const NAV = [
@@ -32,7 +32,7 @@ const NAV = [
 ];
 
 export default function AppShell({ children }) {
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -136,14 +136,28 @@ export default function AppShell({ children }) {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={signOut}
-            aria-label={t("logout")}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-600 text-white"
-          >
-            <SignOut size={17} weight="bold" />
-          </button>
+          <div className="flex items-center gap-2">
+            <select
+              aria-label="Language"
+              value={lang}
+              onChange={(event) => setLang(event.target.value)}
+              className="h-9 rounded-lg border border-ink-200 bg-white px-2 text-xs font-bold text-ink-700 outline-none"
+            >
+              {LANGUAGES.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={signOut}
+              aria-label={t("logout")}
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-600 text-white"
+            >
+              <SignOut size={17} weight="bold" />
+            </button>
+          </div>
         </header>
 
         <main className="mx-auto max-w-7xl px-4 pb-28 pt-5 lg:px-8 lg:pb-10">{children}</main>

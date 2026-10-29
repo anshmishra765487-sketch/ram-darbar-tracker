@@ -1,8 +1,11 @@
-/* English-only dictionary. The whole UI is English. */
+/* English + Hindi dictionary. */
 
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 
-export const LANGUAGES = [{ code: "en", label: "English", short: "EN" }];
+export const LANGUAGES = [
+  { code: "en", label: "English", short: "EN" },
+  { code: "hi", label: "Hindi", short: "हिंदी" },
+];
 
 const en = {
   appName: "Ram Darbar Tracker",
@@ -272,35 +275,302 @@ const en = {
   acc_expense_total_of: "Total",
 };
 
-export function setLang() {
-  localStorage.removeItem("rdt_lang");
-}
+const hi = {
+  appName: "Ram Darbar Tracker",
+  app_version: "v1.0",
+  tagline: "Complete transport business accounting in one place",
 
-const DICTS = { en };
+  nav_dashboard: "डैशबोर्ड",
+  nav_trips: "ट्रिप्स",
+  nav_trucks: "ट्रक",
+  nav_drivers: "ड्राइवर",
+  nav_expenses: "एक्सपेंस",
+  nav_payments: "पेमेंट",
+  nav_reports: "रिपोर्ट",
+  nav_accounts: "अकाउंट्स",
+  nav_admin: "Admin",
 
-let currentLang = "en";
+  common_add: "जोड़ें",
+  common_edit: "संपादन",
+  common_delete: "हटाएँ",
+  common_save: "सेव",
+  common_cancel: "रद",
+  common_update: "अपडेट",
+  common_loading: "लोड हो रहा...",
+  common_no_data: "अभी डेटा नहीं",
+  common_total: "कुल",
+  common_all: "सभी",
+  common_today: "आज",
+  common_not_set: "सेट नहीं",
+  clear_data: "सारा डेटा हटाएँ",
+  clear_data_hint: "Truck, driver, trip, expense aur payment sab delete. Undo nahi ho sakta.",
 
-function interpolate(text, params) {
-  if (!params) return text;
-  return text.replace(/\{(\w+)\}/g, (match, key) =>
-    Object.prototype.hasOwnProperty.call(params, key) ? String(params[key]) : match,
-  );
-}
+  login_title: "लॉगिन",
+  login_subtitle: "अपने अकाउंट में साइन इन करें",
+  login_password: "पासवर्ड",
+  login_submit: "लॉगिन",
+  login_working: "जाँच हो रही...",
+  login_empty: "Mobile number aur password enter kijiye",
+  login_signed_in: "वापसी",
+  login_bad_credentials: "Galat mobile number ya password",
+  login_caps_lock: "Caps Lock on hai",
+  login_session_expired: "Session expire ho gayi. Please log in again.",
+  login_error: "Request complete nahi hui",
+  login_pitch: "Aapka pura transport business ek jagah par",
+  login_pitch_trips: "Trips, expenses, payments aur daily ledger",
+  login_pitch_accounts: "Party ledger, aging, truck P&L aur profit-loss",
+  login_pitch_secure: "Passwords hashed, SMS OTP login, token 30 days valid",
 
-export function t(key, params) {
-  const dict = DICTS[currentLang] || DICTS.en;
+  login_tab_sms: "Mobile OTP",
+  login_tab_password: "Password",
+  login_mobile: "Mobile number",
+  login_mobile_required: "Enter your mobile number",
+  login_bad_phone: "Enter a valid 10-digit mobile number",
+  login_otp_label: "6-digit code",
+  login_otp_send: "Send OTP",
+  login_otp_resend: "Resend OTP",
+  login_otp_resend_in: "Resend OTP in {n}s",
+  login_otp_verify: "Verify and login",
+  login_otp_enter: "Enter the OTP code",
+  login_otp_sent: "OTP sent",
+  login_otp_sent_to: "OTP sent to",
+  login_forgot_password: "Forgot password? Set it with OTP",
+  login_password_reset: "Naya password set kijiye",
+  login_password_reset_done: "Password set. Please log in.",
+  login_new_password: "Naya password",
+  login_password_short: "Password kam se kam 6 characters ka hona chahiye",
+  login_cancel_reset: "Cancel",
+  login_show: "Show password",
+  login_hide: "Hide password",
+
+  login_create_account: "Naya account banayein",
+  login_signup_title: "Account banayein",
+  login_signup_subtitle: "Shuru hone ke liye details enter kijiye",
+  login_signup_submit: "Account banayein",
+  login_signup_name_required: "Full name enter kijiye",
+  login_account_created: "Account ban gaya",
+  login_now_login: "Ab aap apne mobile number aur password se log in kijiye.",
+  login_back_to_login: "Already have an account? Login",
+  login_name: "Full name",
+  login_password_hint: "Minimum 6 characters",
+
+  account_title: "Account",
+  account_phone_hint: "Login OTPs will be sent to this number",
+  phone_saved: "Mobile number saved",
+  logout: "Logout",
+  login_required: "Login required",
+  change_password: "Change password",
+  old_password: "Current password",
+  new_password: "New password",
+  password_changed: "Password changed",
+
+  dash_title: "Dashboard",
+  dash_subtitle: "Today's transport business at a glance",
+  kpi_trips: "Total Trips",
+  kpi_revenue: "Revenue",
+  kpi_expenses: "Expenses",
+  kpi_received: "Received",
+  kpi_pending: "Pending",
+  kpi_profit: "Net Profit",
+  kpi_cancelled_note: "Cancelled trips excluded",
+  kpi_freight_note: "Total freight billed",
+  kpi_expense_note: "Fuel / Toll / Maintenance",
+  kpi_received_note: "Advance + payments",
+  kpi_pending_note: "Due from parties",
+  chart_monthly: "Monthly Revenue vs Expenses",
+  chart_monthly_sub: "Last 6 months",
+  chart_expense: "Expense Breakdown",
+  chart_expense_sub: "Total spend by category",
+  card_recent: "Recent Trips",
+  card_recent_sub: "Last 6 trips",
+  card_status: "Trips by Status",
+  card_status_sub: "How many trips at each stage",
+  insight_top_party: "Top Party",
+  insight_best_truck: "Best Truck",
+  insight_outstanding: "Outstanding Alert",
+  insight_outstanding_sub: "Follow up with parties for pending amount",
+  view_all: "View all",
+
+  trips_title: "Trips (Consignment)",
+  trips_new: "New Trip",
+  trips_edit: "Edit trip",
+  trips_create: "Create trip",
+  trips_form_sub: "Enter party, route and freight",
+  f_party: "Party name",
+  f_goods: "Goods",
+  f_from: "From",
+  f_to: "To",
+  f_truck: "Truck",
+  f_driver: "Driver",
+  f_freight: "Freight amount",
+  f_load_tons: "Load (tons)",
+  f_advance: "Advance received",
+  f_date: "Date",
+  f_status: "Status",
+  f_notes: "Consignee / Note",
+  f_capacity: "Capacity (Tons)",
+  f_model: "Model",
+  f_reg: "Registration number",
+  f_name: "Name",
+  f_phone: "Phone",
+  f_license: "License number",
+  f_salary: "Monthly salary",
+  f_amount: "Amount",
+  f_category: "Category",
+  f_mode: "Mode",
+  f_reference: "Reference number",
+  f_link_trip: "Link to trip (optional)",
+  f_link_truck: "Link to truck (optional)",
+  trips_search: "Search by party, route or goods",
+  trips_empty: "No trips found",
+  trips_empty_hint: "Start by adding your first trip",
+  trips_created: "Trip created",
+  trips_updated: "Trip updated",
+  trips_deleted: "Trip deleted",
+  trips_confirm_delete: "Delete this trip?",
+  trips_bilty: "Bilty PDF",
+  trips_bilty_done: "Bilty PDF downloaded",
+  trips_req: "Party and route are required",
+  trips_freight_req: "Enter the freight amount",
+
+  ledger_title: "Trip Ledger",
+  ledger_charges: "Charges",
+  ledger_receipts: "Receipts",
+  ledger_freight: "Freight",
+  ledger_expenses: "Trip expenses",
+  ledger_cash_expenses: "Cash expenses",
+  ledger_advance: "Advance",
+  ledger_payments: "Payments received",
+  ledger_balance: "Balance due",
+  ledger_profit: "Profit",
+  ledger_margin: "Margin",
+  ledger_per_ton: "Rate per ton",
+  ledger_view: "Ledger",
+  ledger_no_expense: "No expense recorded",
+  ledger_no_payment: "No payments yet",
+
+  trucks_title: "Trucks",
+  trucks_new: "New Truck",
+  trucks_add: "Add truck",
+  trucks_edit: "Edit truck",
+  trucks_fleet: "trucks in the fleet",
+  trucks_added: "Truck added",
+  trucks_updated: "Truck updated",
+  trucks_deleted: "Truck deleted",
+  trucks_dup: "This registration number already exists",
+  trucks_req: "Enter registration, model and capacity",
+  trucks_empty: "No trucks yet",
+  trucks_empty_hint: "Add your first truck",
+  trucks_dup_hint: "The backend blocks duplicate registration numbers.",
+
+  drivers_title: "Drivers",
+  drivers_new: "New Driver",
+  drivers_add: "Add driver",
+  drivers_edit: "Edit driver",
+  drivers_payroll: "monthly salary",
+  drivers_added: "Driver added",
+  drivers_updated: "Driver updated",
+  drivers_deleted: "Driver deleted",
+  drivers_req: "Name, phone and license number are required",
+  drivers_empty: "No drivers yet",
+  drivers_empty_hint: "Add your first driver",
+
+  expenses_title: "Expenses",
+  expenses_sub: "Fuel, toll and maintenance accounting",
+  expenses_new: "New Expense",
+  expenses_add: "Add expense",
+  expenses_edit: "Edit expense",
+  expenses_total: "Total Expenses",
+  expenses_added: "Expense added",
+  expenses_updated: "Expense updated",
+  expenses_deleted: "Expense deleted",
+  expenses_amount_req: "Enter the amount",
+  expenses_empty: "No expenses yet",
+  expenses_empty_hint: "Add your first expense",
+  expenses_trip: "Trip",
+  expenses_truck: "Truck",
+
+  payments_title: "Payments",
+  payments_sub: "Money received from parties",
+  payments_new: "New Payment",
+  payments_add: "Record payment",
+  payments_edit: "Edit payment",
+  payments_total: "Total Received",
+  payments_added: "Payment recorded",
+  payments_updated: "Payment updated",
+  payments_deleted: "Payment deleted",
+  payments_trip_req: "Selecting a trip is required",
+  payments_amount_req: "Enter the amount",
+  payments_empty: "No payments yet",
+  payments_empty_hint: "Record money received from a party here",
+  payments_party_trip: "Party / Trip",
+  payments_trip_pending: "Trip pending",
+
+  reports_title: "Reports",
+  reports_sub: "Per-trip accounting and totals",
+  reports_table: "Trip-wise Accounts",
+  reports_table_sub: "Freight, expenses, received, pending and profit",
+  reports_export: "Export CSV",
+  reports_exported: "CSV downloaded",
+  reports_empty: "No data yet",
+  reports_empty_hint: "Add a trip first",
+
+  acc_title: "Accounts",
+  acc_sub: "Party ledger, aging, truck P&L, driver payouts and profit-loss",
+  tab_parties: "Party Ledger",
+  tab_aging: "Outstanding Aging",
+  tab_truck: "Truck-wise P&L",
+  tab_drivers: "Driver Payouts",
+  tab_pnl: "Profit & Loss",
+  acc_parties: "Parties",
+  acc_freight: "Freight Billed",
+  acc_profit: "Profit",
+  acc_total_outstanding: "Total Outstanding",
+  acc_balance_payable: "Balance Payable",
+  acc_salary: "Monthly Salary",
+  acc_advance: "Advance Given",
+  acc_net: "Net Profit",
+  acc_margin: "Margin",
+  acc_income_status: "Income by Status",
+  acc_expense_head: "Expense Head-wise",
+  acc_cash_exp: "Cash Expenses",
+  acc_driver_adv: "Driver Advance",
+  acc_age: "Age",
+  acc_last_trip: "Last Trip",
+  acc_profit_per_trip: "Profit / Trip",
+  acc_who_owes: "Party-wise: billed, received and pending",
+  acc_empty: "Add data to see the accounts here",
+  acc_expense_total_of: "Total",
+};
+
+const DICTS = { en, hi };
+
+export function translate(key, params, lang) {
+  const dict = DICTS[lang] || DICTS.en;
   const value = dict[key];
   const text = value === undefined ? key : value;
-  return interpolate(text, params);
+  if (!params) return text;
+  return text.replace(/\{(\w+)\}/g, (match, key2) =>
+    Object.prototype.hasOwnProperty.call(params, key2) ? String(params[key2]) : match,
+  );
 }
 
 export const I18nContext = createContext(null);
 
 export function I18nProvider({ children }) {
-  const value = useMemo(() => ({ lang: "en", t, toggle: () => {}, setLang }), []);
+  const [lang, setLangState] = useState(() => localStorage.getItem("rdt_lang") === "hi" ? "hi" : "en");
+  const setLang = (next) => {
+    const code = next === "hi" ? "hi" : "en";
+    setLangState(code);
+    localStorage.setItem("rdt_lang", code);
+  };
+  const value = useMemo(
+    () => ({ lang, t: (key, params) => translate(key, params, lang), setLang, toggle: () => setLang(lang === "en" ? "hi" : "en") }),
+    [lang, setLang],
+  );
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
 export function useI18n() {
-  return useContext(I18nContext) || { lang: "en", t, toggle: () => {}, setLang };
+  return useContext(I18nContext) || { lang: "en", t: (key, params) => translate(key, params, "en"), setLang: () => {}, toggle: () => {} };
 }

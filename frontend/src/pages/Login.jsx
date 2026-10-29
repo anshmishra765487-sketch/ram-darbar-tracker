@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import { api, errorMessage } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { useI18n } from "../lib/i18n";
+import { LANGUAGES, useI18n } from "../lib/i18n";
 import { Button } from "../components/ui/button";
 import { Field, Input } from "../components/ui/input";
 
@@ -30,7 +30,7 @@ const isPhone = (value) => PHONE_RE.test(value);
 const isEmail = (value) => EMAIL_RE.test(value);
 
 export default function Login() {
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const { login, signup, loginWithOtp, resetPassword, isAuthenticated } = useAuth();
   const location = useLocation();
   const passRef = useRef(null);
@@ -287,6 +287,24 @@ export default function Login() {
             <p className="mt-1 text-sm text-ink-500">
               {isSignup ? t("login_signup_subtitle") : t("login_subtitle")}
             </p>
+
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-ink-200 bg-ink-50 px-3 py-2">
+              <label htmlFor="login-lang" className="text-[11px] font-bold uppercase tracking-wide text-ink-500">
+                Language
+              </label>
+              <select
+                id="login-lang"
+                value={lang}
+                onChange={(event) => setLang(event.target.value)}
+                className="h-8 rounded-lg border border-ink-200 bg-white px-2 text-xs font-bold text-ink-700 outline-none"
+              >
+                {LANGUAGES.map((item) => (
+                  <option key={item.code} value={item.code}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {!isSignup ? (
               <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-ink-100 p-1">
