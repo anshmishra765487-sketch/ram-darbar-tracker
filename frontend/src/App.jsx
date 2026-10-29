@@ -5,6 +5,7 @@ import { useI18n } from "./lib/i18n";
 import AppShell from "./components/AppShell";
 import Account from "./pages/Account";
 import Accounts from "./pages/Accounts";
+import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Trips from "./pages/Trips";
@@ -55,6 +56,7 @@ export default function App() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/accounts" element={<Accounts />} />
         <Route path="/account" element={<Account />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

@@ -17,6 +17,7 @@ const en = {
   nav_payments: "Payments",
   nav_reports: "Reports",
   nav_accounts: "Accounts",
+  nav_admin: "Admin",
 
   common_add: "Add",
   common_edit: "Edit",

@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+﻿import { NavLink, useNavigate } from "react-router-dom";
 import {
   ChartLineUp,
   FileText,
@@ -13,6 +13,7 @@ import {
   SignOut,
   Key,
   GithubLogo,
+  ShieldCheck,
 } from "@phosphor-icons/react";
 import { Toaster, toast } from "sonner";
 import { cn } from "../lib/utils";
@@ -34,6 +35,10 @@ export default function AppShell({ children }) {
   const { t } = useI18n();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Admin panel sirf owner ko dikhta hai.
+  const navItems =
+    user?.role === "owner" ? [...NAV, { to: "/admin", key: "nav_admin", icon: ShieldCheck }] : NAV;
 
   const signOut = () => {
     logout();
@@ -59,7 +64,7 @@ export default function AppShell({ children }) {
         </div>
 
         <nav className="flex-1 space-y-1 px-3">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -158,7 +163,7 @@ export default function AppShell({ children }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-ink-200 bg-white/95 backdrop-blur lg:hidden">
         <div className="flex snap-x gap-1 overflow-x-auto px-2 py-1.5">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

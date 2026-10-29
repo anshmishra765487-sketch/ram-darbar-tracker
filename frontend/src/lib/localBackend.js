@@ -206,6 +206,7 @@ function publicUser(user) {
     email: user.email || OWNER.email,
     name: user.name || "Owner",
     phone: user.phone || "",
+    role: user.role || "user",
   };
 }
 
@@ -1124,6 +1125,130 @@ function adminReset() {
   return { cleared };
 }
 
+// --- admin panel ----------------------------------------------------------
+
+const ADMIN_ROLES = ["owner", "admin", "staff"];
+
+function requireOwner() {
+  const me = currentUserRecord();
+  if (!me || me.role !== "owner") throw httpError(403, "Only the owner can open the admin panel");
+  return me;
+}
+
+function adminStats() {
+  const me = requireOwner();
+  const roles = {};
+  for (const user of DB.users) {
+    const role = ADMIN_ROLES.includes(user.role) ? user.role : "staff";
+    roles[role] = (roles[role] || 0) + 1;
+  }
+  return {
+    storage: "offline",
+    counts: {
+      users: DB.users.length,
+      trucks: DB.trucks.length,
+      drivers: DB.drivers.length,
+      trips: DB.trips.length,
+      expenses: DB.expenses.length,
+      payments: DB.payments.length,
+      locations: DB.locations.length,
+    },
+    roles,
+    current_user: publicUser(me),
+  };
+}
+
+function adminUsers() {
+  const me = requireOwner();
+  return DB.users
+    .map((user) => ({
+      id: user._id,
+      name: user.name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      role: ADMIN_ROLES.includes(user.role) ? user.role : "staff",
+      created_at: user.created_at || null,
+      is_me: user._id === me._id,
+    }))
+    .sort((a, b) => {
+      if (a.role !== b.role) return a.role === "owner" ? -1 : b.role === "owner" ? 1 : a.role.localeCompare(b.role);
+      return (a.name || "").localeCompare(b.name || "");
+    });
+}
+
+function adminCreateUser(body) {
+  requireOwner();
+  const name = String(body.name || "").trim();
+  const phone = normalizePhone(body.phone);
+  const password = String(body.password || "");
+  const role = body.role === "admin" ? "admin" : "staff";
+  if (name.length < 2) throw httpError(400, "Enter a name");
+  if (phone.length < 11) throw httpError(400, "Enter a valid 10-digit mobile number");
+  if (findUserByPhone(phone)) throw httpError(409, "This mobile number already has an account");
+  if (password.length < 6) throw httpError(400, "Password must be at least 6 characters");
+
+  const email = `user_${phone}@ramdarbar.local`;
+  const id = insertOne("users", {
+    email,
+    phone,
+    password_hash: password,
+    name,
+    role,
+    created_at: nowIso(),
+  });
+  return { id, email, name, phone, role, created_at: nowIso() };
+}
+
+function adminUpdateUser(id, body) {
+  const me = requireOwner();
+  const user = findOne("users", { _id: id });
+  if (!user) throw httpError(404, "User not found");
+
+  const patch = {};
+  if (body.role !== undefined) {
+    if (user._id === me._id) throw httpError(400, "You cannot change your own role");
+    if (!["admin", "staff"].includes(body.role)) throw httpError(400, "Invalid role");
+    patch.role = body.role;
+  }
+  if (body.password !== undefined) {
+    if (String(body.password).length < 6) throw httpError(400, "Password must be at least 6 characters");
+    patch.password_hash = String(body.password);
+  }
+  if (body.name !== undefined) {
+    const name = String(body.name).trim();
+    if (name.length < 2) throw httpError(400, "Enter a name");
+    patch.name = name;
+  }
+  if (!Object.keys(patch).length) throw httpError(400, "Nothing to update");
+
+  updateOne("users", id, patch);
+  return { ok: true };
+}
+
+function adminDeleteUser(id) {
+  const me = requireOwner();
+  if (id === me._id) throw httpError(400, "You cannot delete your own account");
+  const user = findOne("users", { _id: id });
+  if (!user) throw httpError(404, "User not found");
+  if (user.role === "owner") throw httpError(400, "The owner account cannot be deleted");
+  DB.users = DB.users.filter((row) => row._id !== id);
+  persist();
+  return { deleted: true };
+}
+
+function adminExport() {
+  requireOwner();
+  return { exported_at: nowIso(), app: "Ram Darbar Tracker", db: getDatabase() };
+}
+
+function adminImport(body) {
+  requireOwner();
+  const incoming = body && body.db;
+  if (!incoming || typeof incoming !== "object") throw httpError(400, "Invalid backup file");
+  setDatabase(incoming);
+  return { ok: true, counts: Object.fromEntries(COLLECTIONS.map((name) => [name, DB[name].length])) };
+}
+
 // --- router ---------------------------------------------------------------
 
 const ROUTES = [
@@ -1179,6 +1304,13 @@ const ROUTES = [
   ["GET", /^\/accounts\/trip\/([^/]+)$/, (m) => accountTrip(m[1])],
 
   ["POST", /^\/admin\/reset$/, () => adminReset()],
+  ["GET", /^\/admin\/stats$/, () => adminStats()],
+  ["GET", /^\/admin\/users$/, () => adminUsers()],
+  ["POST", /^\/admin\/users$/, (m, body) => adminCreateUser(body)],
+  ["PUT", /^\/admin\/users\/([^/]+)$/, (m, body) => adminUpdateUser(m[1], body)],
+  ["DELETE", /^\/admin\/users\/([^/]+)$/, (m) => adminDeleteUser(m[1])],
+  ["GET", /^\/admin\/export$/, () => adminExport()],
+  ["POST", /^\/admin\/import$/, (m, body) => adminImport(body)],
   ["GET", /^\/owner$/, () => ({ email: OWNER.email, name: "Owner", auth_required: true })],
   ["GET", /^\/health$/, () => ({
     status: "ok",
