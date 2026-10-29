@@ -7,12 +7,12 @@ import { getFirestore } from "firebase/firestore";
 // (values start with "AIza..." etc.)
 // ---------------------------------------------------------------------------
 const firebaseConfig = {
-  apiKey: "PASTE_API_KEY",
-  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE_PROJECT_ID.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID",
+  apiKey: "AIzaSyAwQw5NFCZMX77NkoiQLJ28BCY6mQVGsow",
+  authDomain: "ram-darbar-tracker.firebaseapp.com",
+  projectId: "ram-darbar-tracker",
+  storageBucket: "ram-darbar-tracker.firebasestorage.app",
+  messagingSenderId: "706850602012",
+  appId: "1:706850602012:web:c2276d058b7cba8e0bf3d9",
 };
 
 // Agar config bhar diya gaya hai to cloud sync on, warna app offline chalti hai.

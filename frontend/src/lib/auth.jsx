@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
-import { start as startCloud, schedulePush as pushCloud, pushAccount } from "./cloudSync";
+import { start as startCloud, resume as resumeCloud, schedulePush as pushCloud, pushAccount } from "./cloudSync";
 
 const TOKEN_KEY = "rdt_token";
 const USER_KEY = "rdt_user";
@@ -31,15 +31,22 @@ export function AuthProvider({ children }) {
       return;
     }
     let cancelled = false;
-    api
-      .get("/auth/me")
-      .then((res) => {
+    (async () => {
+      // Pehle cloud se latest business data le aao, phir user validate karo.
+      await resumeCloud();
+      if (cancelled) return;
+      startCloud();
+      try {
+        const res = await api.get("/auth/me");
         if (cancelled) return;
         setUser(res.data);
         localStorage.setItem(USER_KEY, JSON.stringify(res.data));
-      })
-      .catch(() => !cancelled && logoutLocal())
-      .finally(() => !cancelled && setChecking(false));
+      } catch {
+        if (!cancelled) logoutLocal();
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    })();
     return () => {
       cancelled = true;
     };

@@ -1,19 +1,20 @@
 // Firebase Firestore ke through cross-device sync.
-// Har mobile number ka apna document hota hai: accounts/{normalizedPhone}
-// Us document me poori app ki DB (users, trucks, trips, ...) JSON blob ke roop me store hoti hai.
-// Isliye same number se kisi bhi device par login karo -> same data dikhega.
+// Poora business ek hi document me rehta hai: accounts/ram-darbar-business
+// Isliye owner, staff, munshi - sabke phone par same data dikhta hai.
+// Har login se pehle cloud se latest data pull hota hai, aur har change
+// ke baad (700ms debounce) cloud par push hota hai.
 
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { CONFIGURED, db } from "./firebase";
-import { getDatabase, setDatabase, getActivePhone, phoneKey } from "./localBackend";
+import { getDatabase, setDatabase } from "./localBackend";
 
 const COLLECTION = "accounts";
+const WORKSPACE = "ram-darbar-business";
 
 let unsubscribe = null;
 let pushTimer = null;
 let dirty = false;
 let lastPushedAt = 0;
-let activeKey = null;
 
 function enabled() {
   return CONFIGURED && Boolean(db);
@@ -23,57 +24,41 @@ export function isCloudEnabled() {
   return enabled();
 }
 
-async function pull(key) {
-  const snap = await getDoc(doc(db, COLLECTION, key));
-  if (snap.exists()) {
-    const data = snap.data();
-    if (data && data.db) {
-      setDatabase(data.db);
-      return true;
-    }
-  }
-  return false;
+function workspaceRef() {
+  return doc(db, COLLECTION, WORKSPACE);
 }
 
-// Login se pehle: us number ka cloud data local me le aao.
-export async function beforeLogin(identifier) {
+async function pull() {
+  const snap = await getDoc(workspaceRef());
+  if (!snap.exists()) return false;
+  const data = snap.data();
+  if (!data || !data.db) return false;
+  setDatabase(data.db);
+  return true;
+}
+
+// Login se pehle: shared business data local me le aao.
+export async function beforeLogin() {
   if (!enabled()) return;
-  const value = String(identifier || "").trim();
-  if (!/^\d{10,}$/.test(value.replace(/\D/g, ""))) return;
-  const key = phoneKey(value);
-  if (!key) return;
   try {
-    await pull(key);
+    await pull();
   } catch (error) {
     console.warn("Cloud pull failed, offline data use kar rahe hain:", error);
   }
 }
 
-// Poori DB ko ek specific number ke document me bhejo (signup/reset ke liye).
-export async function pushAccount(identifier) {
-  if (!enabled()) return;
-  const key = phoneKey(identifier);
-  if (!key) return;
-  try {
-    await setDoc(
-      doc(db, COLLECTION, key),
-      { db: getDatabase(), updatedAt: Date.now(), phone: key },
-      { merge: true },
-    );
-  } catch (error) {
-    console.warn("Cloud push (account) failed:", error);
-  }
+// Poori DB cloud par bhejo (signup/password reset ke baad bhi).
+export async function pushAccount() {
+  await pushNow();
 }
 
-// Turant push (debounce ke baad).
+// Turant push.
 export async function pushNow() {
   if (!enabled()) return;
-  const key = getActivePhone();
-  if (!key) return;
   try {
     await setDoc(
-      doc(db, COLLECTION, key),
-      { db: getDatabase(), updatedAt: Date.now(), phone: key },
+      workspaceRef(),
+      { db: getDatabase(), updatedAt: Date.now() },
       { merge: true },
     );
     lastPushedAt = Date.now();
@@ -94,16 +79,12 @@ export function schedulePush() {
   }, 700);
 }
 
-// Live updates subscribe karo (doosre device ke changes turant aayein).
+// Live updates subscribe karo (doosre device ke changes turant local me aayein).
 export function start() {
   if (!enabled()) return;
-  const key = getActivePhone();
-  if (!key) return;
-  if (unsubscribe && activeKey === key) return;
-  stop();
-  activeKey = key;
+  if (unsubscribe) return;
   unsubscribe = onSnapshot(
-    doc(db, COLLECTION, key),
+    workspaceRef(),
     (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
@@ -121,18 +102,17 @@ export function stop() {
     unsubscribe();
     unsubscribe = null;
   }
-  activeKey = null;
 }
 
-// App load par: session pehle se hai to pull + subscribe.
+// App load par session pehle se hai to pull + subscribe.
 export async function resume() {
   if (!enabled()) return;
-  const key = getActivePhone();
-  if (!key) return;
+  let found = false;
   try {
-    await pull(key);
+    found = await pull();
   } catch (error) {
     console.warn("Cloud resume pull failed:", error);
   }
+  if (!found) await pushNow();
   start();
 }
