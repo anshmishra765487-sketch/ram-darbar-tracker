@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ram Darbar Tracker</string>
+    <string name="title_activity_main">Ram Darbar Tracker</string>
+    <string name="package_name">com.ramdarbar.tracker</string>
+    <string name="custom_url_scheme">com.ramdarbar.tracker</string>
+</resources>

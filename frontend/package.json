@@ -10,6 +10,8 @@
     "preview": "vite preview --port 4173"
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.3",
+    "@capacitor/core": "^6.2.3",
     "@phosphor-icons/react": "^2.1.7",
     "axios": "^1.7.9",
     "firebase": "^10.14.1",
@@ -20,6 +22,7 @@
     "sonner": "^2.0.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.2.3",
     "@tailwindcss/vite": "^4.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "tailwindcss": "^4.0.0",

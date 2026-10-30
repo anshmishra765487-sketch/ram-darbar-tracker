@@ -1,3 +1,6 @@
+// Android (Capacitor) build ke liye base "/" chahiye.
+// GitHub Pages build me VITE_BASE=/ram-darbar-tracker/ set hota hai.
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
